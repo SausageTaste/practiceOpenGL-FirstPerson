@@ -733,6 +733,7 @@ class MainLoop:
         self.winSize_t = (800, 600)
         self.centerPos_t = (self.winSize_t[0] / 2, self.winSize_t[1] / 2)
         self.dSurf = p.display.set_mode(self.winSize_t, pl.DOUBLEBUF | pl.OPENGL | pl.RESIZABLE)
+        p.display.set_caption("First Person Practice")
 
         self.initGL()
 
