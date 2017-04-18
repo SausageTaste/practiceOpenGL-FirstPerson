@@ -26,17 +26,13 @@
 ## 실행환경
 
 #### 파이썬 버전
-
-　Python 3.5
+* Python 3.5
 
 #### 필요 라이브러리
-　Numpy
-
-　PyGame
-
-　PyOpenGL
-
-　Pillow
+* Numpy
+* PyGame
+* PyOpenGL
+* Pillow
 
 ## 조작법
 
