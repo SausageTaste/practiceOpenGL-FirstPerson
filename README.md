@@ -10,12 +10,12 @@
 　제 첫 3D 렌더링 프로그램이기도 하고, 새로 배운 대로 그때그때 추가하느라 코드가 깔끔하지 않고 알아보기도 힘들어졌습니다.
 게다가 주석도 거의 안 달려 있습니다 죄송합니다. ㅜㅜ
 혹시나 제 코드를 읽으며 대체로 이해가 되는데, 한 부분이 이해가 안 되신다면 제 이메일로(woos8899@gmail.com) 질문 보내주세요.
-하나도 모르겠는데 OpenGL을 배워보고 싶다 하시는 분은, 제가 OpenGL을 배운 웹사이트(https://learnopengl.com/)를 방문해 보시길 추천해 드립니다.
+하나도 모르겠는데 OpenGL을 배워보고 싶다 하시는 분은, 제가 OpenGL을 배운 웹사이트 (https://learnopengl.com/) 를 방문해 보시길 추천해 드립니다.
 물론 영어입니다.
 
 ## 코드를 실행하시려는 분께
 　firstPersonPractice 폴더 안의 내용물들이 Github에 있는 그대로 모두 필요합니다.
-깃허브로 다운로드하는 것이 번거로우시다면 구글 드라이브(https://drive.google.com/file/d/0BzF0hEIffU-tNnFfM1k1S2x6ek0/view?usp=sharing)에서 zip 파일을 다운로드하실 수 있습니다.
+깃허브로 다운로드하는 것이 번거로우시다면 구글 드라이브 (https://drive.google.com/file/d/0BzF0hEIffU-tNnFfM1k1S2x6ek0/view?usp=sharing) 에서 zip 파일을 다운로드하실 수 있습니다.
 압축을 푼 뒤 src 폴더 안에 가시면 소스 파일들이 있습니다. 그 안에서 "main_v2.py"를 실행해 주세요.
 
 ## 실행환경 준비가 번거로우신 분께...
