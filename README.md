@@ -2,7 +2,7 @@
 
 
 ## ● 개요
-![Alt text](/screenshots/2017-04-18.png)
+![Overview](/screenshots/01.png)
 　제가 혼자서 OpenGL을 공부하며 만든 간단한 3D FPS 렌더링 프로그램입니다.
 이 프로그램에서 할 수 있는 거라곤 단순히 WASD키로 돌아다니기, 마우스로 시점 조작하기, 상자에 부딪치기 정도 뿐입니다.
 하지만 렌더링과 관련해서는, OpenGL과 쉐이딩 언어 GLSL을 이용하여 조명, 그림자, Blender에서 exported된 모델 불러오기 등 괜찮은 기능들이 구현돼 있습니다.
