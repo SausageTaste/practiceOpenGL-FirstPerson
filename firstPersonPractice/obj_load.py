@@ -1,3 +1,4 @@
+from time import time
 from typing import Tuple
 
 import OpenGL.GL as gl
@@ -20,13 +21,12 @@ class LoadedModelManager:
 
         self.obj_l.append( LoadedModel("assets\\models\\seoul_v2.obj", initPos_t=[0, -50, 0], initScale=[50, 50, 50]) )
 
-        for x in self.obj_l:
-            x.load()
+
 
     def update(self, projectMatrix, viewMatrix, camera:Camera, ambient_t:Tuple[float, float, float],
                lightCount_i:int, lightPos_t:tuple, lightColor_t:tuple, lightMaxDistance_t: tuple,
                spotLightCount_i:int, spotLightPos_t:tuple, spotLightColor_t:tuple, spotLightMaxDistance_t:tuple,
-               spotLightDirection_t:tuple, sportLightCutoff_t:tuple, flashLight:bool):
+               spotLightDirection_t:tuple, sportLightCutoff_t:tuple, flashLight:bool, depthMap, sunLightColor):
         gl.glUseProgram(self.program)
 
         # Vertex shader
@@ -54,10 +54,29 @@ class LoadedModelManager:
         else:
             gl.glUniform1i(27, 0)
 
+        gl.glUniformMatrix4fv(gl.glGetUniformLocation(self.program, "lightSpaceMatrix"), 1, gl.GL_FALSE, depthMap)
+
+        gl.glUniform1i(56, 0)
+        gl.glUniform1i(57, 1)
+
+        gl.glActiveTexture(gl.GL_TEXTURE1)
+        gl.glBindTexture(gl.GL_TEXTURE_2D, depthMap)
+
+        gl.glUniform3f(gl.glGetUniformLocation(self.program, "sunLightColor"), *sunLightColor)
+
         ####
 
         for obj in self.obj_l:
             obj.update()
+
+    def drawForShadow(self):
+        for obj in self.obj_l:
+            obj.drawForShadow()
+
+    def loadAll(self):
+        for x in self.obj_l:
+            if not x.loaded:
+                x.load()
 
     @staticmethod
     def _getProgram() -> int:
@@ -106,17 +125,21 @@ class LoadedModel(Actor):
         self.renderFlag_b = True
         self.shininess_f = 32.0
         self.specularStrength_f = 1.0
+        self.loaded = False
 
         self.vertices_d = {}
         self.materials_d = {}
 
     def update(self):
+        if not self.loaded:
+            return None
         if not self.renderFlag_b:
             return None
 
         for key_s in self.vertices_d:
             obj_d = self.vertices_d[key_s]
             gl.glBindVertexArray(obj_d["vao"])
+            gl.glActiveTexture(gl.GL_TEXTURE0)
             gl.glBindTexture(gl.GL_TEXTURE_2D, obj_d["txid"])
 
             #### To vertex shader ####
@@ -132,6 +155,21 @@ class LoadedModel(Actor):
 
             gl.glDrawArrays(gl.GL_TRIANGLES, 0, obj_d["ver_num"])
 
+    def drawForShadow(self):
+        if not self.loaded:
+            return None
+        if not self.renderFlag_b:
+            return None
+
+        for key_s in self.vertices_d:
+            obj_d = self.vertices_d[key_s]
+            gl.glBindVertexArray(obj_d["vao"])
+            gl.glBindTexture(gl.GL_TEXTURE_2D, obj_d["txid"])
+
+            gl.glUniformMatrix4fv(3, 1, gl.GL_FALSE, self.getModelMatrix())
+
+            gl.glDrawArrays(gl.GL_TRIANGLES, 0, obj_d["ver_num"])
+
     def getObjDir(self):
         return self.__objDir_s
 
@@ -141,6 +179,8 @@ class LoadedModel(Actor):
     def load(self):
         self._loadMaterial()
         self._loadVertices()
+
+        self.loaded = True
 
     def _loadVertices_dum(self):
         vertices_d = {}
@@ -269,6 +309,7 @@ class LoadedModel(Actor):
     def _loadVertices(self):
         vertices_d = {}
 
+        st = time()
         with open(self.getObjDir()) as file:
             for x_s in file:
                 x_s = x_s.rstrip('\n')
@@ -332,7 +373,7 @@ class LoadedModel(Actor):
                             vertices_d[curObj_s]["vn_i"].append(vertices_d["vn"][v_l[2] - 1])
                         except IndexError:
                             print( "{}: {}, {}, vn  <<  {}".format( curObj_s, v_l[2] - 1, len(vertices_d["vn" ]), repr(x_s) ) )
-
+        print( "File job:", time() - st )
         del vertices_d["v"], vertices_d["vt"], vertices_d["vn"]
 
         for x in vertices_d:
@@ -342,6 +383,7 @@ class LoadedModel(Actor):
 
         self.vertices_d = {}
         for objName_s in vertices_d.keys():
+            st = time()
             self.vertices_d[objName_s] = {}
             localObj_d = vertices_d[objName_s]  # Dictionary that contains vertex data atm. Local variable.
             attrObj_d = self.vertices_d[objName_s]  # Class attribute to store vertex data.
@@ -385,6 +427,7 @@ class LoadedModel(Actor):
             gl.glEnableVertexAttribArray(2)
 
             attrObj_d["txid"] = mainpy.TextureContainer.getTexture(self.materials_d[localObj_d["mtl"]]["map_Kd"])
+            print(objName_s, "vao loaded:", time() - st)
 
     def _loadMaterial(self):
         with open(self.getMtlDir()) as file:

@@ -214,7 +214,7 @@ class Actor:
             return mmath.scaleMat4(*self.scale_l) * mmath.rotateMat4(-self.lookVerDeg_f, 1, 0, 0) * mmath.rotateMat4(-self.lookHorDeg_f, 0, 1, 0) *\
                    mmath.translateMat4(*self.pos_l)
         else:
-            return mmath.rotateMat4(-self.lookVerDeg_f, 1, 0, 0) * mmath.rotateMat4(-self.lookHorDeg_f, 0, 1, 0) *\
+            return mmath.scaleMat4(*self.scale_l) * mmath.rotateMat4(-self.lookVerDeg_f, 1, 0, 0) * mmath.rotateMat4(-self.lookHorDeg_f, 0, 1, 0) *\
                    mmath.translateMat4(*self.pos_l) * self.parent.getModelMatrix()
 
     def _applyGravity(self, timeDelta:float):

@@ -14,11 +14,13 @@ layout (location = 7) uniform mat4 modelMatrix;
 // From manager, application
 layout (location = 5) uniform mat4 projectMatrix;
 layout (location = 6) uniform mat4 viewMatrix;
+uniform mat4 lightSpaceMatrix;
 
 // Output for fragment shader
 out vec2 texCoord;
 out vec3 normalVec;
 out vec3 fragPos;
+out vec4 fragPosLightSpace;
 
 
 vec4 getSurfaceNormal(int vertexIndex_i)
@@ -48,4 +50,5 @@ void main(void)
     texCoord = vec2(texCoordIn.x * textureHorNum_f, texCoordIn.y * textureVerNum_f);
     normalVec = normalize(vec3(modelMatrix * getSurfaceNormal(gl_VertexID)));
     fragPos = vec3(modelMatrix * vec4(position, 1.0));
+	fragPosLightSpace = lightSpaceMatrix * vec4(fragPos, 1.0);
 }

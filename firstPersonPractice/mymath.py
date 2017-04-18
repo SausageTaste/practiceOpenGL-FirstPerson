@@ -318,16 +318,34 @@ def perspectiveMat4(fov, aspect, n, f):
     fov = fov / 180 * pi
     tanHalfFov_f = tan(fov / 2)
     return np.matrix([[1 / (aspect*tanHalfFov_f), 0, 0, 0],
-                      [0, 1 / tanHalfFov_f, 0, 0],
+                      [0,1 / tanHalfFov_f, 0, 0],
                       [0, 0, -1 * (f + n) / (f - n), -1 * (2*f*n) / (f - n)],
                       [0, 0, -1, 0]], dtype=np.float32).transpose()
 
 
+def orthoMat4(l, r, b, t, n, f):
+    return np.matrix([[2 / (r - l), 0,         0,         (l+r) / (l-r)],
+                      [0,           2 / (t-b), 0,         (b+t) / (b-t)],
+                      [0,           0,         2 / (n-f), (n+f) / (n-f)],
+                      [0,           0,         0,         1]], dtype=np.float32).transpose()
+
+
+def lookat(e:Vec3, center:Vec3, up:Vec3):
+    f = center - e
+    f = f.normalize()
+
+    s = f.cross(f)
+    uc = s.cross(f)
+
+    return np.matrix([[s.x, uc.x, f.x, -e.x],
+                      [s.y, uc.y, f.y, -e.y],
+                      [s.z, uc.z, f.z, -e.z],
+                      [0, 0, 0, 1]], dtype=np.float32)
+
+
 def main():
-    a = np.array([[1, 0, 0, 0],
-                  [0, 1, 0, 0],
-                  [0, 0, 1, 0],
-                  [0, 0, 0, 1]], np.float32)
+    a = Vec4(1, 0, 0, 0)
+    a = a.transform(rotateMat4(1, 0, 90, 0))
     print(a)
 
 

@@ -1,6 +1,8 @@
+import traceback
 import sys
 import itertools
-from math import cos
+from time import time, sleep
+from math import cos, sin, pi
 from typing import Tuple, Generator
 
 import numpy as np
@@ -23,6 +25,9 @@ class Controller:
         self.oldState_t = p.key.get_pressed()
         self.newState_t = p.key.get_pressed()
 
+        self.oldMouseState_t = p.mouse.get_pressed()
+        self.newMouseState_t = p.mouse.get_pressed()
+
         self.target = target
         self.mainLoop = mainLoop
 
@@ -42,6 +47,9 @@ class Controller:
     def update(self, fDelta:float):
         self.oldState_t = self.newState_t
         self.newState_t = p.key.get_pressed()
+
+        self.oldMouseState_t = self.newMouseState_t
+        self.newMouseState_t = p.mouse.get_pressed()
 
         if self.getStateChange(pl.K_f) == 1:
             if self.mainLoop.flashLight_b:
@@ -80,6 +88,17 @@ class Controller:
 
                 self.__blockBound_b = False
             """
+        if self.getStateChange(pl.K_F8) == 1:
+            self.mainLoop.level.loadedModelManager.obj_l[0].load()
+        if self.getStateChange(pl.K_F9) == 1:
+            if self.mainLoop.lightSourceMode_b:
+                self.mainLoop.lightSourceMode_b = False
+            else:
+                self.mainLoop.lightSourceMode_b = True
+        if self.getStateChange(pl.K_F10) == 1:
+            self.mainLoop.level.boxManager.rotateSpeed_i -= 10
+        if self.getStateChange(pl.K_F11) == 1:
+            self.mainLoop.level.boxManager.rotateSpeed_i += 10
 
         self.target.move(fDelta, self.newState_t[pl.K_w], self.newState_t[pl.K_s], self.newState_t[pl.K_a],
                          self.newState_t[pl.K_d], self.newState_t[pl.K_SPACE], self.newState_t[pl.K_LSHIFT])
@@ -161,7 +180,9 @@ class TextureContainer:
     def __init__(self):
         self.data_d = {0x21:self.getTexture("assets\\textures\\21.bmp"),
                        0x22:self.getTexture("assets\\textures\\22.bmp"),
-                       0x12:self.getTexture("assets\\textures\\12.bmp")}
+                       0x12:self.getTexture("assets\\textures\\12.bmp"),
+                       0x14:self.getTexture("assets\\textures\\14.png"),
+                       0x13:self.getTexture("assets\\textures\\13.png")}
 
     def __getitem__(self, item):
         if not isinstance(item, int):
@@ -174,7 +195,12 @@ class TextureContainer:
         aImg = Image.open(textureDir_s)
         imgW_i = aImg.size[0]
         imgH_i = aImg.size[1]
-        image_bytes = aImg.tobytes("raw", "RGBX", 0, -1)
+        try:
+            image_bytes = aImg.tobytes("raw", "RGBA", 0, -1)
+            alpha_b = True
+        except ValueError:
+            image_bytes = aImg.tobytes("raw", "RGBX", 0, -1)
+            alpha_b = False
         imgArray = np.array([x / 255 for x in image_bytes], dtype=np.float32)
 
         texId = gl.glGenTextures(1)
@@ -185,6 +211,10 @@ class TextureContainer:
 
         gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_BASE_LEVEL, 0)
         gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAX_LEVEL, 6)
+
+        if alpha_b and False:
+            gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
+            gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
 
         gl.glGenerateMipmap(gl.GL_TEXTURE_2D)
 
@@ -259,6 +289,8 @@ class StaticSurface:
 
     def update(self):
         gl.glBindVertexArray(self.vao)
+
+        gl.glActiveTexture(gl.GL_TEXTURE0)
         gl.glBindTexture(gl.GL_TEXTURE_2D, self.textureId)
 
         #### To vertex shader ####
@@ -273,6 +305,15 @@ class StaticSurface:
         gl.glUniform1f(53, self.specularStrength_f)
 
         ####  ####
+
+        #gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_LINE)
+        gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
+
+    def drawForShadow(self):
+        gl.glBindVertexArray(self.vao)
+        gl.glBindTexture(gl.GL_TEXTURE_2D, self.textureId)
+
+        gl.glUniformMatrix4fv(3, 1, gl.GL_FALSE, mmath.identityMat4())
 
         #gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_LINE)
         gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
@@ -443,6 +484,7 @@ class Box(Actor):
         self.updateActor(timeDelta)
         if self.renderFlag:
             gl.glBindVertexArray(self.vao)
+            gl.glActiveTexture(gl.GL_TEXTURE0)
             gl.glBindTexture(gl.GL_TEXTURE_2D, self.selectedTexId)
 
             #### To vertex shader ####
@@ -454,7 +496,21 @@ class Box(Actor):
             #### To fragment shader ####
 
             gl.glUniform1f(11, self.shininess_f)
-            gl.glUniform1f(53, self.specularStrength_f)
+            gl.glUniform1f(54, self.specularStrength_f)
+
+            ####  ####
+
+            gl.glDrawArrays(gl.GL_TRIANGLES, 0, self.vertexSize_i)
+
+    def drawForShadow(self, timeDelta):
+        self.updateActor(timeDelta)
+        if self.renderFlag or True:
+            gl.glBindVertexArray(self.vao)
+            gl.glBindTexture(gl.GL_TEXTURE_2D, self.selectedTexId)
+
+            #### To vertex shader ####
+
+            gl.glUniformMatrix4fv(3, 1, gl.GL_FALSE, self.getModelMatrix())
 
             ####  ####
 
@@ -484,7 +540,10 @@ class Box(Actor):
 class BoxManager:
     def __init__(self):
         self.boxes_l = []
+        self.rotating_l = []
         self.program = self._getProgram()
+
+        self.rotateSpeed_i = 20
 
     def addBox(self, aBox:Box):
         self.boxes_l.append(aBox)
@@ -492,7 +551,8 @@ class BoxManager:
     def update(self, projectMatrix, viewMatrix, camera:Camera, ambient_t:Tuple[float, float, float],
                lightCount_i:int, lightPos_t:tuple, lightColor_t:tuple, lightMaxDistance_t:tuple,
                spotLightCount_i:int, spotLightPos_t:tuple, spotLightColor_t:tuple, spotLightMaxDistance_t:tuple,
-               spotLightDirection_t:tuple, sportLightCutoff_t:tuple, flashLight:bool, timeDelta):
+               spotLightDirection_t:tuple, sportLightCutoff_t:tuple, flashLight:bool, timeDelta, shadowMat, depthMap,
+               sunLightColor):
 
         gl.glUseProgram(self.program)
 
@@ -511,6 +571,8 @@ class BoxManager:
         gl.glUniform3fv(17, lightCount_i, lightColor_t)
         gl.glUniform1fv(22, lightCount_i, lightMaxDistance_t)
 
+        gl.glUniformMatrix4fv(gl.glGetUniformLocation(self.program, "lightSpaceMatrix"), 1, gl.GL_FALSE, shadowMat)
+
         if flashLight:
             gl.glUniform1i(27, spotLightCount_i)
             gl.glUniform3fv(28, spotLightCount_i, spotLightPos_t)
@@ -521,10 +583,32 @@ class BoxManager:
         else:
             gl.glUniform1i(27, 0)
 
+        gl.glUniform1i(56, 0)
+        gl.glUniform1i(57, 1)
+
+        gl.glActiveTexture(gl.GL_TEXTURE1)
+        gl.glBindTexture(gl.GL_TEXTURE_2D, depthMap)
+
+        gl.glUniform3f(gl.glGetUniformLocation(self.program, "sunLightColor"), *sunLightColor)
+
         ####
 
         for box in self.boxes_l:
             box.update(timeDelta)
+
+        for box in self.rotating_l:
+            box.update(timeDelta)
+
+    def drawForShadow(self, timeDelta):
+        for box in self.boxes_l:
+            box.drawForShadow(timeDelta)
+
+        for x, box in enumerate(self.rotating_l):
+            angle = (x / 50 * 360 + time()*self.rotateSpeed_i)
+            radian = angle / 180 * pi
+            box.pos_l = [sin(radian)*40, sin(radian)*5+7, cos(radian)*40]
+            box.lookHorDeg_f = angle
+            box.drawForShadow(timeDelta)
 
     @staticmethod
     def _getProgram() -> int:
@@ -556,16 +640,21 @@ class BoxManager:
 
 
 class Level:
-    def __init__(self, mainLoop:"MainLoop"):
+    def __init__(self, mainLoop:"MainLoop", depthMap):
         self.texCon = TextureContainer()
         self.mainLoop = mainLoop
+        self.depthMap = depthMap
 
-        self.ambient_t = (0.4, 0.4, 0.4)
+        self.ambient_t = (0.5, 0.5, 0.5)
+        self.sunLightColor = (0.4, 0.4, 0.4)
+        self.dynamicLight = PointLight((-25, 2, -25), (1, 1, 1), 20)
         self.pointLights_l = [
-            PointLight((0,   4, -8),  (0.5, 0.5, 0.5), 10.0),
-            PointLight((16,  4,   16),    (1.0, 0.0, 1.0), 10.0),
-            PointLight((-16, 4, 16), (0.0, 1.0, 1.0), 10.0)
+            PointLight((0,   4, -12),  (0.5, 0.5, 0.5), 10.0),
+            PointLight((25,  6,   25),    (1.0, 0.0, 1.0), 10.0),
+            PointLight((-25, 4, 25), (0.0, 1.0, 1.0), 10.0),
+            self.dynamicLight
         ]
+        #self.pointLights_l = []
 
         self.spotLights_l = [
             SpotLight((0, 0, 0), (1, 1, 1), 30, cos(mmath.Angle(30).getRadian()), mmath.Vec3(1, 0, 0))
@@ -573,7 +662,7 @@ class Level:
 
         self.surfaceProgram = StaticSurface.getProgram()
 
-        size = 20
+        size = 50
         self.floor = StaticSurface(
             mmath.Vec3(-size, 0, -size), mmath.Vec3(-size, 0, size), mmath.Vec3(size, 0, size), mmath.Vec3(size, 0, -size),
             mmath.Vec3(0, 1, 0),
@@ -601,7 +690,7 @@ class Level:
         self.wall4 = StaticSurface(
             mmath.Vec3(size, 5, -size), mmath.Vec3(size, 0, -size), mmath.Vec3(size, 0, size), mmath.Vec3(size, 5, size),
             mmath.Vec3(-1, 0, 0),
-            self.texCon[0x22],
+            self.texCon[0x13],
             5, 2*size, 8, 0.0
         )
         self.ceiling = StaticSurface(
@@ -609,11 +698,23 @@ class Level:
             mmath.Vec3(0, -1, 0), self.texCon[0x12], 2*size, 2*size, 0, 0
         )
 
+        self.display = StaticSurfaceShadow(
+            mmath.Vec3(-2, 4, -5), mmath.Vec3(-2, 0, -5), mmath.Vec3(2, 0, -5), mmath.Vec3(2, 4, -5),
+            mmath.Vec3(0, 0, 1), depthMap, 1, 1, 0, 0
+        )
+
+        self.display2 = StaticSurfaceShadow(
+            mmath.Vec3(2, 4, -5),mmath.Vec3(2, 0, -5),mmath.Vec3(-2, 0, -5),mmath.Vec3(-2, 4, -5),
+            mmath.Vec3(0, 0, 1), depthMap, 1, 1, 0, 0
+        )
+
         self.boxManager = BoxManager()
 
-        box1 = Box(mmath.Vec3(-0.5, 1.6, -0.5), mmath.Vec3(-0.5, 1.6, 0.5), mmath.Vec3(0.5, 1.6, 0.5), mmath.Vec3(0.5, 1.6, -0.5),
-                mmath.Vec3(-0.5, -1, -0.5), mmath.Vec3(-0.5, -1, 0.5), mmath.Vec3(0.5, -1, 0.5), mmath.Vec3(0.5, -1, -0.5),
-                self.texCon[0x12], 1, 1, 0, 0.0, [0,1.5,0])
+        box1 = Box(
+            mmath.Vec3(-0.5, 1.6, -0.5), mmath.Vec3(-0.5, 1.6, 0.5), mmath.Vec3(0.5, 1.6, 0.5), mmath.Vec3(0.5, 1.6, -0.5),
+            mmath.Vec3(-0.5, -1, -0.5), mmath.Vec3(-0.5, -1, 0.5), mmath.Vec3(0.5, -1, 0.5), mmath.Vec3(0.5, -1, -0.5),
+            self.texCon[0x12], 1, 1, 0, 0.0, [0,1.5,0]
+        )
         self.boxManager.addBox(box1)
 
         self.boxManager.addBox(
@@ -621,6 +722,25 @@ class Level:
                 mmath.Vec3(-1, -1, -1), mmath.Vec3(-1, -1, 1), mmath.Vec3(1, -1, 1), mmath.Vec3(1, -1, -1),
                 self.texCon[0x12], 1, 1, 0, 0.0, [0,1,-17])
         )
+        self.boxManager.addBox(
+            Box(mmath.Vec3(-1, 1, -1), mmath.Vec3(-1, 1, 1), mmath.Vec3(1, 1, 1), mmath.Vec3(1, 1, -1),
+                mmath.Vec3(-1, -1, -1), mmath.Vec3(-1, -1, 1), mmath.Vec3(1, -1, 1), mmath.Vec3(1, -1, -1),
+                self.texCon[0x12], 1, 1, 0, 0.0, [5, 1, -17])
+        )
+
+        self.boxManager.addBox(
+            Box(mmath.Vec3(-1, 1, -1), mmath.Vec3(-1, 1, 1), mmath.Vec3(1, 1, 1), mmath.Vec3(1, 1, -1),
+                mmath.Vec3(-1, -1, -1), mmath.Vec3(-1, -1, 1), mmath.Vec3(1, -1, 1), mmath.Vec3(1, -1, -1),
+                self.texCon[0x12], 1, 1, 0, 0.0, [5, 3.5, -17])
+        )
+
+        for x in range(50):
+            angle = (x/50*360) / 180 * pi
+            self.boxManager.rotating_l.append(
+                Box(mmath.Vec3(-1, 1, -1), mmath.Vec3(-1, 1, 1), mmath.Vec3(1, 1, 1), mmath.Vec3(1, 1, -1),
+                    mmath.Vec3(-1, -1, -1), mmath.Vec3(-1, -1, 1), mmath.Vec3(1, -1, 1), mmath.Vec3(1, -1, -1),
+                    self.texCon[0x12], 1, 1, 0, 0.0, [sin(angle)*40, 3.5, cos(angle)*40])
+            )
 
         box2 = self.boxManager.boxes_l[1]
 
@@ -635,13 +755,35 @@ class Level:
         level.collideModels_l.append(co.Aabb( mmath.Vec3(-size, -1, -size), mmath.Vec3(size, 0, size) ))
 
         box1.collideActors_l.append(box2)
+        box1.collideActors_l.append(self.boxManager.boxes_l[2])
+        box1.collideActors_l.append(self.boxManager.boxes_l[3])
+        for box in self.boxManager.rotating_l:
+            box1.collideActors_l.append(box)
         box1.collideActors_l.append(level)
         box1.textureId2 = self.texCon[0x22]
         box1.physics = True
 
         self.loadedModelManager = ol.LoadedModelManager()
 
-    def update(self, timeDelta, projectMatrix, viewMatrix, camera:Camera, flashLight):
+        self.grass = StaticSurface(
+            mmath.Vec3(-1, 2, 3), mmath.Vec3(-1, 0, 3), mmath.Vec3(1, 0, 3), mmath.Vec3(1, 2, 3),
+            mmath.Vec3(0, 0, 1), self.texCon[0x14], 1, 1, 0, 0
+        )
+
+    def update(self, timeDelta, projectMatrix, viewMatrix, camera:Camera, flashLight, shadowMat):
+        curTime_f = time() / 10
+        gl.glClearBufferfv(gl.GL_COLOR, 0, ( (sin(curTime_f) + 1) / 4 , (sin(curTime_f) + 1) / 4 , (sin(curTime_f) + 1) / 2, 1.0))
+
+        sunLightColor_f = (sin(curTime_f) + 1) / 4
+        self.sunLightColor = (sunLightColor_f, sunLightColor_f, sunLightColor_f)
+
+        ambientLightColor_f = (sin(curTime_f) + 1) / 8
+        self.ambient_t = (ambientLightColor_f, ambientLightColor_f, ambientLightColor_f)
+
+        self.dynamicLight.r = sin( (time()+1)/2 )
+        self.dynamicLight.g = cos((time()+1)/2)
+        self.dynamicLight.b = sin((time()+1)/2) * cos((time()+1)/2)
+
         x, y, z = camera.getXYZ()
         y -= 0.5
 
@@ -676,7 +818,20 @@ class Level:
             sportLightCutoff_t += (x.cutoff_f,)
             spotLightCount_i += 1
 
-        gl.glUseProgram(self.surfaceProgram)
+        self.boxManager.update(projectMatrix, viewMatrix, camera, self.ambient_t,
+                               lightCount_i, lightPos_t, lightColor_t, lightMaxDistance_t,
+                               spotLightCount_i, spotLightPos_t, spotLightColor_t, spotLightMaxDistance_t,
+                               spotLightDirection_t, sportLightCutoff_t, flashLight, timeDelta, shadowMat,
+                               self.depthMap, self.sunLightColor)
+
+        self.loadedModelManager.update(
+            projectMatrix, viewMatrix, camera, self.ambient_t,
+            lightCount_i, lightPos_t, lightColor_t, lightMaxDistance_t,
+            spotLightCount_i, spotLightPos_t, spotLightColor_t, spotLightMaxDistance_t,
+            spotLightDirection_t, sportLightCutoff_t, flashLight, self.depthMap, self.sunLightColor
+        )
+
+        gl.glUseProgram(self.display.program)
 
         # Vertex shader
 
@@ -704,26 +859,281 @@ class Level:
         else:
             gl.glUniform1i(27, 0)
 
+        self.display.update()
+        self.display2.update()
+
+        gl.glUseProgram(self.surfaceProgram)
+
+        # Vertex shader
+
+        gl.glUniformMatrix4fv(5, 1, gl.GL_FALSE, projectMatrix)
+        gl.glUniformMatrix4fv(6, 1, gl.GL_FALSE, viewMatrix)
+        gl.glUniformMatrix4fv(7, 1, gl.GL_FALSE, mmath.identityMat4())
+
+        gl.glUniformMatrix4fv(54, 1, gl.GL_FALSE, shadowMat)
+
+        # Fragment shader
+
+        gl.glUniform3f(8, *camera.getXYZ())
+        gl.glUniform3f(9, *self.ambient_t)
+
+        gl.glUniform1i(10, lightCount_i)
+        gl.glUniform3fv(12, lightCount_i, lightPos_t)
+        gl.glUniform3fv(17, lightCount_i, lightColor_t)
+        gl.glUniform1fv(22, lightCount_i, lightMaxDistance_t)
+
+        gl.glUniform1i(55, 0)
+        gl.glUniform1i(56, 1)
+
+        gl.glActiveTexture(gl.GL_TEXTURE1)
+        gl.glBindTexture(gl.GL_TEXTURE_2D, self.depthMap)
+
+        if flashLight:
+            gl.glUniform1i(27, spotLightCount_i)
+            gl.glUniform3fv(28, spotLightCount_i, spotLightPos_t)
+            gl.glUniform3fv(33, spotLightCount_i, spotLightColor_t)
+            gl.glUniform1fv(43, spotLightCount_i, spotLightMaxDistance_t)
+            gl.glUniform3fv(38, spotLightCount_i, spotLightDirection_t)
+            gl.glUniform1fv(48, spotLightCount_i, sportLightCutoff_t)
+        else:
+            gl.glUniform1i(27, 0)
+
+        gl.glUniform3f(gl.glGetUniformLocation(self.surfaceProgram, "sunLightColor"), *self.sunLightColor)
+
         ####
 
         self.floor.update()
         self.wall1.update()
         self.wall2.update()
         self.wall3.update()
+        #self.ceiling.update()
         self.wall4.update()
-        self.ceiling.update()
+        self.grass.update()
 
-        self.boxManager.update(projectMatrix, viewMatrix, camera, self.ambient_t,
-                               lightCount_i, lightPos_t, lightColor_t, lightMaxDistance_t,
-                               spotLightCount_i, spotLightPos_t, spotLightColor_t, spotLightMaxDistance_t,
-                               spotLightDirection_t, sportLightCutoff_t, flashLight, timeDelta)
+    def drawForShadow(self, timeDelta):
+        self.floor.drawForShadow()
+        self.wall1.drawForShadow()
+        self.wall2.drawForShadow()
+        self.wall3.drawForShadow()
+        #self.ceiling.drawForShadow()
 
-        self.loadedModelManager.update(
-            projectMatrix, viewMatrix, camera, self.ambient_t,
-            lightCount_i, lightPos_t, lightColor_t, lightMaxDistance_t,
-            spotLightCount_i, spotLightPos_t, spotLightColor_t, spotLightMaxDistance_t,
-            spotLightDirection_t, sportLightCutoff_t, flashLight
-        )
+        self.wall4.drawForShadow()
+        self.grass.drawForShadow()
+
+        self.boxManager.drawForShadow(timeDelta)
+
+        self.loadedModelManager.drawForShadow()
+
+
+class StaticSurfaceShadow:
+    def __init__(self, vec1:mmath.Vec3, vec2:mmath.Vec3, vec3:mmath.Vec3, vec4:mmath.Vec3, surfaceVec:mmath.Vec3,
+                 textureId:int, textureVerNum_f:float, textureHorNum_f:float, shininess:float, specularStrength:float):
+        self.vertex1 = vec1
+        self.vertex2 = vec2
+        self.vertex3 = vec3
+        self.vertex4 = vec4
+
+        self.normal = surfaceVec
+        self.textureHorNum_f = textureHorNum_f
+        self.textureVerNum_f = textureVerNum_f
+        self.shininess_f = shininess
+        self.specularStrength_f = specularStrength
+
+        self.textureId = textureId
+        self.program = self.getProgram()
+
+        #### Vertex Array Obj ####
+
+        self.vao = gl.glGenVertexArrays(1)
+        gl.glBindVertexArray(self.vao)
+
+        #### Vertices ####
+
+        vertices = np.array([*vec1.getXYZ(),
+                             *vec2.getXYZ(),
+                             *vec3.getXYZ(),
+                             *vec1.getXYZ(),
+                             *vec3.getXYZ(),
+                             *vec4.getXYZ()], dtype=np.float32)
+        size = vertices.size * vertices.itemsize
+
+        self.verticesBuffer = gl.glGenBuffers(1)  # Create a buffer.
+        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.verticesBuffer)  # Bind the buffer.
+        gl.glBufferData(gl.GL_ARRAY_BUFFER, size, vertices, gl.GL_STATIC_DRAW)  # Allocate memory.
+
+        gl.glVertexAttribPointer(0, 3, gl.GL_FLOAT, gl.GL_FALSE, 0, None)  # Defines vertex attributes. What are those?
+        gl.glEnableVertexAttribArray(0)
+
+        del size, vertices
+
+        #### Texture Coord ####
+
+        textureCoords = np.array([0, 1,
+                                  0, 0,
+                                  1, 0,
+                                  0, 1,
+                                  1, 0,
+                                  1, 1], dtype=np.float32)
+        size = textureCoords.size * textureCoords.itemsize
+
+        self.texCoordBuffer = gl.glGenBuffers(1)  # Create a buffer.
+        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.texCoordBuffer)  # Bind the buffer.
+        gl.glBufferData(gl.GL_ARRAY_BUFFER, size, textureCoords, gl.GL_STATIC_DRAW)  # Allocate memory.
+
+        gl.glVertexAttribPointer(1, 2, gl.GL_FLOAT, gl.GL_FALSE, 0, None)  # Defines vertex attributes. What are those?
+        gl.glEnableVertexAttribArray(1)
+
+        del size, textureCoords
+
+    def update(self):
+        gl.glBindVertexArray(self.vao)
+
+        gl.glActiveTexture(gl.GL_TEXTURE0)
+        gl.glBindTexture(gl.GL_TEXTURE_2D, self.textureId)
+
+        #### To vertex shader ####
+
+        gl.glUniform3f(2, *self.normal.getXYZ())
+        gl.glUniform1f(3, self.textureHorNum_f)
+        gl.glUniform1f(4, self.textureVerNum_f)
+
+        #### To fragment shader ####
+
+        gl.glUniform1f(11, self.shininess_f)
+        gl.glUniform1f(53, self.specularStrength_f)
+
+        ####  ####
+
+        #gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_LINE)
+        gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
+
+    def drawForShadow(self):
+        gl.glBindVertexArray(self.vao)
+        gl.glBindTexture(gl.GL_TEXTURE_2D, self.textureId)
+
+        gl.glUniformMatrix4fv(3, 1, gl.GL_FALSE, mmath.identityMat4())
+
+        #gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_LINE)
+        gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
+
+    @staticmethod
+    def getProgram() -> int:
+        with open("shader_source\\vs_shadow_draw.txt") as file:
+            vertexShader = shaders.compileShader(file.read(), gl.GL_VERTEX_SHADER)
+        log_s = gl.glGetShaderInfoLog(vertexShader).decode()
+        if log_s:
+            raise TypeError(log_s)
+
+        with open("shader_source\\fs_shadow_draw.txt") as file:
+            fragmentShader = shaders.compileShader(file.read(), gl.GL_FRAGMENT_SHADER)
+        log_s = gl.glGetShaderInfoLog(fragmentShader).decode()
+        if log_s:
+            raise TypeError(log_s)
+
+        program = gl.glCreateProgram()
+        gl.glAttachShader(program, vertexShader)
+        gl.glAttachShader(program, fragmentShader)
+        gl.glLinkProgram(program)
+
+        print("Linking Log:", gl.glGetProgramiv(program, gl.GL_LINK_STATUS))
+
+        gl.glDeleteShader(vertexShader)
+        gl.glDeleteShader(fragmentShader)
+
+        gl.glUseProgram(program)
+
+        return program
+
+
+class ShadowMap:
+    def __init__(self):
+        self.depthMapFbo = gl.glGenFramebuffers(1)
+
+        self.shadowW_i = 1024*4
+        self.shadowH_i = 1024*4
+
+        self.program = self._getProgram()
+
+        self.depthMapTex = gl.glGenTextures(1)
+        gl.glBindTexture(gl.GL_TEXTURE_2D, self.depthMapTex)
+        gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_DEPTH_COMPONENT, self.shadowW_i, self.shadowH_i, 0, gl.GL_DEPTH_COMPONENT, gl.GL_FLOAT, None)
+
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_BORDER)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_BORDER)
+        #gl.glTexParameterfv(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_BORDER_COLOR, (1.0, 1.0, 1.0, 1.0))
+
+        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, self.depthMapFbo)
+        gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_DEPTH_ATTACHMENT, gl.GL_TEXTURE_2D, self.depthMapTex, 0)
+        gl.glDrawBuffer(gl.GL_NONE)
+        gl.glReadBuffer(gl.GL_NONE)
+
+        if gl.glCheckFramebufferStatus(gl.GL_FRAMEBUFFER) != gl.GL_FRAMEBUFFER_COMPLETE:
+            print( "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" )
+        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
+
+    def renderDepthMap(self, a, b, level:Level, timeDelta):
+        gl.glDisable(gl.GL_CULL_FACE)
+        gl.glUseProgram(self.program)
+        gl.glViewport(0, 0, self.shadowW_i, self.shadowH_i)
+        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, self.depthMapFbo)
+        gl.glClear(gl.GL_DEPTH_BUFFER_BIT)
+
+        gl.glUniformMatrix4fv( 1, 1, gl.GL_FALSE, b * a )
+
+        level.drawForShadow(timeDelta)
+
+        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
+        gl.glEnable(gl.GL_CULL_FACE)
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
+
+    @staticmethod
+    def _getProgram() -> int:
+        with open("shader_source\\vs_shadow.txt") as file:
+            vertexShader = shaders.compileShader(file.read(), gl.GL_VERTEX_SHADER)
+        log_s = gl.glGetShaderInfoLog(vertexShader).decode()
+        if log_s:
+            raise TypeError(log_s)
+
+        with open("shader_source\\fs_shadow.txt") as file:
+            fragmentShader = shaders.compileShader(file.read(), gl.GL_FRAGMENT_SHADER)
+        log_s = gl.glGetShaderInfoLog(fragmentShader).decode()
+        if log_s:
+            raise TypeError(log_s)
+
+        program = gl.glCreateProgram()
+        gl.glAttachShader(program, vertexShader)
+        gl.glAttachShader(program, fragmentShader)
+        gl.glLinkProgram(program)
+
+        print("Linking Log in Shadow:", gl.glGetProgramiv(program, gl.GL_LINK_STATUS))
+
+        gl.glDeleteShader(vertexShader)
+        gl.glDeleteShader(fragmentShader)
+
+        gl.glUseProgram(program)
+
+        return program
+
+
+class FrameBuffer:
+    def __init__(self):
+        self.fbo = gl.glGenFramebuffers(1)
+        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, self.fbo)
+
+        texture = gl.glGenTextures(1)
+        gl.glBindTexture(gl.GL_TEXTURE_2D, texture)
+
+        gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, 800, 600, 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE, None)
+
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR);
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR);
+
+        gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT0, gl.GL_TEXTURE_2D, texture, 0)
+
+        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
+        gl.glDeleteFramebuffers(1, self.fbo)
 
 
 class MainLoop:
@@ -737,7 +1147,8 @@ class MainLoop:
 
         self.initGL()
 
-        self.level = Level(self)
+        self.shadowMap = ShadowMap()
+        self.level = Level(self, self.shadowMap.depthMapTex)
         self.camera = Camera()
         self.controller = Controller(self, self.camera)
         self.fManager = mp.FrameManager(True)
@@ -745,25 +1156,28 @@ class MainLoop:
         self.flashLight_b = True
 
         self.projectMatrix = None
+        self.lightSourceMode_b = False
 
     @staticmethod
     def initGL():
         gl.glEnable(gl.GL_CULL_FACE)
         gl.glEnable(gl.GL_DEPTH_TEST)
+        gl.glEnable(gl.GL_BLEND)
+        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
         pass
 
     def update(self):
         self.fManager.update()
 
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
-        gl.glClearBufferfv(gl.GL_COLOR, 0, (0.0, 0.0, 0.0, 1.0))
 
         for event in p.event.get():
             if event.type == pl.QUIT:
                 p.quit()
                 sys.exit(0)
             elif event.type == pl.VIDEORESIZE:
-                self.onResize(event.dict['w'], event.dict['h'])
+                self.winSize_t = (event.dict['w'], event.dict['h'])
+                self.onResize()
 
         self.controller.update(self.fManager.getFrameDelta())
 
@@ -773,18 +1187,28 @@ class MainLoop:
             self.drawText((-0.95, 0.7, 0), "Looking : {:.2f}, {:.2f}".format(self.camera.lookHorDeg_f,
                                                                              self.camera.lookVerDeg_f))
         hor, ver = self.camera.getWorldDegree()
-        viewMatrix = mmath.translateMat4(*self.camera.getWorldXYZ(), -1) *\
-                     mmath.rotateMat4(hor, 0, 1, 0) *\
-                     mmath.rotateMat4(ver, 1, 0, 0)
-        self.level.update(self.fManager.getFrameDelta(), self.projectMatrix, viewMatrix, self.camera, self.flashLight_b)
+        viewMatrix = mmath.translateMat4(*self.camera.getWorldXYZ(), -1) * mmath.rotateMat4(hor, 0, 1, 0) * mmath.rotateMat4(ver, 1, 0, 0)
+
+        lightProjection = mmath.orthoMat4(-72.0, 72.0, -72.0, 72.0, -30.0, 90.0)
+
+        if self.lightSourceMode_b:
+            lightView = viewMatrix
+            print(self.camera.getWorldXYZ(), hor, ver)
+        else:
+            lightView = mmath.translateMat4(-7, 26, 17, -1) * mmath.rotateMat4(332, 0, 1, 0) * mmath.rotateMat4(-44, 1, 0, 0)
+
+        self.shadowMap.renderDepthMap(lightProjection, lightView, self.level, self.fManager.getFrameDelta())
+        self.onResize()
+        self.level.update(self.fManager.getFrameDelta(), self.projectMatrix, viewMatrix, self.camera, self.flashLight_b, lightView*lightProjection)
 
         p.display.flip()
 
-    def onResize(self, w, h):
-        self.winSize_t = (w, h)
+    def onResize(self):
+        w, h = self.winSize_t
         self.centerPos_t = (w / 2, h / 2)
         gl.glViewport(0, 0, w, h)
         self.projectMatrix = mmath.perspectiveMat4(90.0, w / h, 0.1, 1000.0)
+        #self.projectMatrix = mmath.orthoMat4(-10.0, 10.0, -10.0, 10.0, 0.0, 1000.0)
 
     @staticmethod
     def drawText(position, textString):
@@ -796,9 +1220,18 @@ class MainLoop:
 
 
 def main():
-    mainLoop = MainLoop()
-    while True:
-        mainLoop.update()
+    try:
+        mainLoop = MainLoop()
+        while True:
+            mainLoop.update()
+    except SystemExit:  # When the app is closed my clicking close button.
+        pass
+    except:  # I want to see what exception crashed my god damn app.
+        p.quit()
+        print('SERIOUS ERROR OCCURRED!!')
+        traceback.print_exc()
+        sleep(1)
+        input("Press any key to continue...")
 
 
 if __name__ == '__main__':
