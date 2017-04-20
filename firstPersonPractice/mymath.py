@@ -330,17 +330,17 @@ def orthoMat4(l, r, b, t, n, f):
                       [0,           0,         0,         1]], dtype=np.float32).transpose()
 
 
-def lookat(e:Vec3, center:Vec3, up:Vec3):
-    f = center - e
-    f = f.normalize()
-
-    s = f.cross(f)
-    uc = s.cross(f)
-
-    return np.matrix([[s.x, uc.x, f.x, -e.x],
-                      [s.y, uc.y, f.y, -e.y],
-                      [s.z, uc.z, f.z, -e.z],
-                      [0, 0, 0, 1]], dtype=np.float32)
+def getlookatMat4(eye:Vec4, center:Vec4, up:Vec4) -> np.ndarray:
+    f = (center - eye).normalize()
+    upN = up.normalize()
+    s = f.cross(upN)
+    u = s.cross(f)
+    return np.matrix([
+        [ s.x,  u.x,  -f.x,  0.0 ],
+        [ s.y,  u.y,  -f.y,  0.0 ],
+        [ s.z,  u.z,  -f.z,  0.0 ],
+        [ 0.0,  0.0,   0.0,  1.0 ]
+    ], np.float32)
 
 
 def main():

@@ -8,5 +8,5 @@ layout (location = 3) uniform mat4 model;
 
 void main()
 {
-	gl_Position = lightProject * model * vec4(position, 1.0);
+    gl_Position = lightProject * model * vec4(position, 1.0);
 }

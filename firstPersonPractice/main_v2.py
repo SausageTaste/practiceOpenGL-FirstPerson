@@ -90,6 +90,7 @@ class Controller:
             """
         if self.getStateChange(pl.K_F8) == 1:
             self.mainLoop.level.loadedModelManager.obj_l[0].load()
+            self.mainLoop.worldLoaded_b = True
         if self.getStateChange(pl.K_F9) == 1:
             if self.mainLoop.lightSourceMode_b:
                 self.mainLoop.lightSourceMode_b = False
@@ -320,13 +321,13 @@ class StaticSurface:
 
     @staticmethod
     def getProgram() -> int:
-        with open("shader_source\\2nd_vs.txt") as file:
+        with open("shader_source\\2nd_vs.glsl") as file:
             vertexShader = shaders.compileShader(file.read(), gl.GL_VERTEX_SHADER)
         log_s = gl.glGetShaderInfoLog(vertexShader).decode()
         if log_s:
             raise TypeError(log_s)
 
-        with open("shader_source\\2nd_fs.txt") as file:
+        with open("shader_source\\2nd_fs.glsl") as file:
             fragmentShader = shaders.compileShader(file.read(), gl.GL_FRAGMENT_SHADER)
         log_s = gl.glGetShaderInfoLog(fragmentShader).decode()
         if log_s:
@@ -552,7 +553,7 @@ class BoxManager:
                lightCount_i:int, lightPos_t:tuple, lightColor_t:tuple, lightMaxDistance_t:tuple,
                spotLightCount_i:int, spotLightPos_t:tuple, spotLightColor_t:tuple, spotLightMaxDistance_t:tuple,
                spotLightDirection_t:tuple, sportLightCutoff_t:tuple, flashLight:bool, timeDelta, shadowMat, depthMap,
-               sunLightColor):
+               sunLightColor, sunLightDirection:mmath.Vec4):
 
         gl.glUseProgram(self.program)
 
@@ -590,6 +591,7 @@ class BoxManager:
         gl.glBindTexture(gl.GL_TEXTURE_2D, depthMap)
 
         gl.glUniform3f(gl.glGetUniformLocation(self.program, "sunLightColor"), *sunLightColor)
+        gl.glUniform3f(gl.glGetUniformLocation(self.program, "sunLightDirection"), *sunLightDirection.getXYZ())
 
         ####
 
@@ -612,13 +614,13 @@ class BoxManager:
 
     @staticmethod
     def _getProgram() -> int:
-        with open("shader_source\\2nd_vs_box.txt") as file:
+        with open("shader_source\\2nd_vs_box.glsl") as file:
             vertexShader = shaders.compileShader(file.read(), gl.GL_VERTEX_SHADER)
         log_s = gl.glGetShaderInfoLog(vertexShader).decode()
         if log_s:
             raise TypeError(log_s)
 
-        with open("shader_source\\2nd_fs_box.txt") as file:
+        with open("shader_source\\2nd_fs_box.glsl") as file:
             fragmentShader = shaders.compileShader(file.read(), gl.GL_FRAGMENT_SHADER)
         log_s = gl.glGetShaderInfoLog(fragmentShader).decode()
         if log_s:
@@ -770,19 +772,28 @@ class Level:
             mmath.Vec3(0, 0, 1), self.texCon[0x14], 1, 1, 0, 0
         )
 
-    def update(self, timeDelta, projectMatrix, viewMatrix, camera:Camera, flashLight, shadowMat):
-        curTime_f = time() / 10
-        gl.glClearBufferfv(gl.GL_COLOR, 0, ( (sin(curTime_f) + 1) / 4 , (sin(curTime_f) + 1) / 4 , (sin(curTime_f) + 1) / 2, 1.0))
+    def update(self, timeDelta, projectMatrix, viewMatrix, camera:Camera, flashLight, shadowMat, sunLightDirection):
+        a = sunLightDirection.dot(mmath.Vec4(0, -1, -1, 0)) - 0.5
+        if a < 0.0:
+            a = 0.0
+        a = a*2
+        if a< 0.2:
+            a = 0.2
+        elif a > 1.0:
+            a = 1.0
 
-        sunLightColor_f = (sin(curTime_f) + 1) / 4
-        self.sunLightColor = (sunLightColor_f, sunLightColor_f, sunLightColor_f)
+        if False and 0.0 < a < 0.9:
+            self.sunLightColor = (0.7, 0.3, 0.3)
+            gl.glClearBufferfv(gl.GL_COLOR, 0, (a, a / 2, a/2, 1.0))
+        else:
+            self.sunLightColor = (0.5, 0.5, 0.5)
+            gl.glClearBufferfv(gl.GL_COLOR, 0, ( a / 2 , a / 2 , a, 1.0))
 
-        ambientLightColor_f = (sin(curTime_f) + 1) / 8
-        self.ambient_t = (ambientLightColor_f, ambientLightColor_f, ambientLightColor_f)
+        self.ambient_t = (0.25, 0.25, 0.25)
 
         self.dynamicLight.r = sin( (time()+1)/2 )
-        self.dynamicLight.g = cos((time()+1)/2)
-        self.dynamicLight.b = sin((time()+1)/2) * cos((time()+1)/2)
+        self.dynamicLight.g = cos( (time()+1)/2 )
+        self.dynamicLight.b = sin( (time()+1)/2) * cos((time()+1)/2 )
 
         x, y, z = camera.getXYZ()
         y -= 0.5
@@ -822,13 +833,13 @@ class Level:
                                lightCount_i, lightPos_t, lightColor_t, lightMaxDistance_t,
                                spotLightCount_i, spotLightPos_t, spotLightColor_t, spotLightMaxDistance_t,
                                spotLightDirection_t, sportLightCutoff_t, flashLight, timeDelta, shadowMat,
-                               self.depthMap, self.sunLightColor)
+                               self.depthMap, self.sunLightColor, sunLightDirection)
 
         self.loadedModelManager.update(
             projectMatrix, viewMatrix, camera, self.ambient_t,
             lightCount_i, lightPos_t, lightColor_t, lightMaxDistance_t,
             spotLightCount_i, spotLightPos_t, spotLightColor_t, spotLightMaxDistance_t,
-            spotLightDirection_t, sportLightCutoff_t, flashLight, self.depthMap, self.sunLightColor
+            spotLightDirection_t, sportLightCutoff_t, flashLight, shadowMat, self.depthMap, self.sunLightColor, sunLightDirection
         )
 
         gl.glUseProgram(self.display.program)
@@ -899,6 +910,7 @@ class Level:
             gl.glUniform1i(27, 0)
 
         gl.glUniform3f(gl.glGetUniformLocation(self.surfaceProgram, "sunLightColor"), *self.sunLightColor)
+        gl.glUniform3f(gl.glGetUniformLocation(self.surfaceProgram, "sunLightDirection"), *sunLightDirection.getXYZ())
 
         ####
 
@@ -1018,13 +1030,13 @@ class StaticSurfaceShadow:
 
     @staticmethod
     def getProgram() -> int:
-        with open("shader_source\\vs_shadow_draw.txt") as file:
+        with open("shader_source\\vs_shadow_draw.glsl") as file:
             vertexShader = shaders.compileShader(file.read(), gl.GL_VERTEX_SHADER)
         log_s = gl.glGetShaderInfoLog(vertexShader).decode()
         if log_s:
             raise TypeError(log_s)
 
-        with open("shader_source\\fs_shadow_draw.txt") as file:
+        with open("shader_source\\fs_shadow_draw.glsl") as file:
             fragmentShader = shaders.compileShader(file.read(), gl.GL_FRAGMENT_SHADER)
         log_s = gl.glGetShaderInfoLog(fragmentShader).decode()
         if log_s:
@@ -1049,8 +1061,8 @@ class ShadowMap:
     def __init__(self):
         self.depthMapFbo = gl.glGenFramebuffers(1)
 
-        self.shadowW_i = 1024*4
-        self.shadowH_i = 1024*4
+        self.shadowW_i = 1024*16
+        self.shadowH_i = 1024*16
 
         self.program = self._getProgram()
 
@@ -1073,14 +1085,14 @@ class ShadowMap:
             print( "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" )
         gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
 
-    def renderDepthMap(self, a, b, level:Level, timeDelta):
+    def renderDepthMap(self, lightProjection, lightView, level:Level, timeDelta):
         gl.glDisable(gl.GL_CULL_FACE)
         gl.glUseProgram(self.program)
         gl.glViewport(0, 0, self.shadowW_i, self.shadowH_i)
         gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, self.depthMapFbo)
         gl.glClear(gl.GL_DEPTH_BUFFER_BIT)
 
-        gl.glUniformMatrix4fv( 1, 1, gl.GL_FALSE, b * a )
+        gl.glUniformMatrix4fv( 1, 1, gl.GL_FALSE, lightView * lightProjection )
 
         level.drawForShadow(timeDelta)
 
@@ -1090,13 +1102,13 @@ class ShadowMap:
 
     @staticmethod
     def _getProgram() -> int:
-        with open("shader_source\\vs_shadow.txt") as file:
+        with open("shader_source\\vs_shadow.glsl") as file:
             vertexShader = shaders.compileShader(file.read(), gl.GL_VERTEX_SHADER)
         log_s = gl.glGetShaderInfoLog(vertexShader).decode()
         if log_s:
             raise TypeError(log_s)
 
-        with open("shader_source\\fs_shadow.txt") as file:
+        with open("shader_source\\fs_shadow.glsl") as file:
             fragmentShader = shaders.compileShader(file.read(), gl.GL_FRAGMENT_SHADER)
         log_s = gl.glGetShaderInfoLog(fragmentShader).decode()
         if log_s:
@@ -1158,6 +1170,8 @@ class MainLoop:
         self.projectMatrix = None
         self.lightSourceMode_b = False
 
+        self.worldLoaded_b = False
+
     @staticmethod
     def initGL():
         gl.glEnable(gl.GL_CULL_FACE)
@@ -1188,18 +1202,23 @@ class MainLoop:
                                                                              self.camera.lookVerDeg_f))
         hor, ver = self.camera.getWorldDegree()
         viewMatrix = mmath.translateMat4(*self.camera.getWorldXYZ(), -1) * mmath.rotateMat4(hor, 0, 1, 0) * mmath.rotateMat4(ver, 1, 0, 0)
+        # viewMatrix = mmath.translateMat4(*self.camera.getWorldXYZ(), -1) * mmath.getlookatMat4( mmath.Vec4(*self.camera.getWorldXYZ(),1), mmath.Vec4(0,0,0,1), mmath.Vec4(0, 1, 0, 0) )
 
-        lightProjection = mmath.orthoMat4(-72.0, 72.0, -72.0, 72.0, -30.0, 90.0)
+        if self.worldLoaded_b:
+            lightProjection = mmath.orthoMat4(-400.0, 400.0, -400.0, 400.0, -300.0, 300.0)
+        else:
+            lightProjection = mmath.orthoMat4(-75.0, 75.0, -75.0, 75.0, -75.0, 75.0)
 
         if self.lightSourceMode_b:
-            lightView = viewMatrix
-            print(self.camera.getWorldXYZ(), hor, ver)
+            lightView = mmath.getlookatMat4(mmath.Vec4(*self.camera.getWorldXYZ(), 1), mmath.Vec4(0, 0, 0, 1), mmath.Vec4(0, 1, 0, 0))
         else:
-            lightView = mmath.translateMat4(-7, 26, 17, -1) * mmath.rotateMat4(332, 0, 1, 0) * mmath.rotateMat4(-44, 1, 0, 0)
+            sunLightDirection = mmath.Vec4(0, -1, -0.25, 0).normalize()
+            sunLightDirection = sunLightDirection.transform(mmath.rotateMat4(time()*10%360, 0, 0, -1))
+            lightView = mmath.getlookatMat4(mmath.Vec4(0, 0, 0, 1), mmath.Vec4(*sunLightDirection.getXYZ(), 0), mmath.Vec4(0, 1, 0, 0))
 
         self.shadowMap.renderDepthMap(lightProjection, lightView, self.level, self.fManager.getFrameDelta())
         self.onResize()
-        self.level.update(self.fManager.getFrameDelta(), self.projectMatrix, viewMatrix, self.camera, self.flashLight_b, lightView*lightProjection)
+        self.level.update(self.fManager.getFrameDelta(), self.projectMatrix, viewMatrix, self.camera, self.flashLight_b, lightView*lightProjection, sunLightDirection)
 
         p.display.flip()
 

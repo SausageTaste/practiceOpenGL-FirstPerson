@@ -19,14 +19,13 @@ class LoadedModelManager:
         self.obj_l = []
         self.program = self._getProgram()
 
-        self.obj_l.append( LoadedModel("assets\\models\\seoul_v2.obj", initPos_t=[0, -50, 0], initScale=[50, 50, 50]) )
-
-
+        self.obj_l.append( LoadedModel("assets\\models\\seoul_v2.obj", initPos_t=[100, -50, 0], initScale=[50, 50, 50]) )
 
     def update(self, projectMatrix, viewMatrix, camera:Camera, ambient_t:Tuple[float, float, float],
                lightCount_i:int, lightPos_t:tuple, lightColor_t:tuple, lightMaxDistance_t: tuple,
                spotLightCount_i:int, spotLightPos_t:tuple, spotLightColor_t:tuple, spotLightMaxDistance_t:tuple,
-               spotLightDirection_t:tuple, sportLightCutoff_t:tuple, flashLight:bool, depthMap, sunLightColor):
+               spotLightDirection_t:tuple, sportLightCutoff_t:tuple, flashLight:bool, shadowMat, depthMap,
+               sunLightColor, sunLightDirection):
         gl.glUseProgram(self.program)
 
         # Vertex shader
@@ -54,7 +53,7 @@ class LoadedModelManager:
         else:
             gl.glUniform1i(27, 0)
 
-        gl.glUniformMatrix4fv(gl.glGetUniformLocation(self.program, "lightSpaceMatrix"), 1, gl.GL_FALSE, depthMap)
+        gl.glUniformMatrix4fv(gl.glGetUniformLocation(self.program, "lightSpaceMatrix"), 1, gl.GL_FALSE, shadowMat)
 
         gl.glUniform1i(56, 0)
         gl.glUniform1i(57, 1)
@@ -63,6 +62,7 @@ class LoadedModelManager:
         gl.glBindTexture(gl.GL_TEXTURE_2D, depthMap)
 
         gl.glUniform3f(gl.glGetUniformLocation(self.program, "sunLightColor"), *sunLightColor)
+        gl.glUniform3f(gl.glGetUniformLocation(self.program, "sunLightDirection"), *sunLightDirection.getXYZ())
 
         ####
 
@@ -80,13 +80,13 @@ class LoadedModelManager:
 
     @staticmethod
     def _getProgram() -> int:
-        with open("shader_source\\2nd_vs_loaded.txt") as file:
+        with open("shader_source\\2nd_vs_loaded.glsl") as file:
             vertexShader = shaders.compileShader(file.read(), gl.GL_VERTEX_SHADER)
         log_s = gl.glGetShaderInfoLog(vertexShader).decode()
         if log_s:
             raise TypeError(log_s)
 
-        with open("shader_source\\2nd_fs_loaded.txt") as file:
+        with open("shader_source\\2nd_fs_loaded.glsl") as file:
             fragmentShader = shaders.compileShader(file.read(), gl.GL_FRAGMENT_SHADER)
         log_s = gl.glGetShaderInfoLog(fragmentShader).decode()
         if log_s:

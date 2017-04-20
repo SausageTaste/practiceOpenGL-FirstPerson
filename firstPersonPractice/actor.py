@@ -210,12 +210,12 @@ class Actor:
         return mmath.getMoveVector3(mmath.Angle(self.lookHorDeg_f + 90), mmath.Angle(self.lookVerDeg_f))
 
     def getModelMatrix(self):
-        if self.parent is None:
-            return mmath.scaleMat4(*self.scale_l) * mmath.rotateMat4(-self.lookVerDeg_f, 1, 0, 0) * mmath.rotateMat4(-self.lookHorDeg_f, 0, 1, 0) *\
-                   mmath.translateMat4(*self.pos_l)
-        else:
-            return mmath.scaleMat4(*self.scale_l) * mmath.rotateMat4(-self.lookVerDeg_f, 1, 0, 0) * mmath.rotateMat4(-self.lookHorDeg_f, 0, 1, 0) *\
-                   mmath.translateMat4(*self.pos_l) * self.parent.getModelMatrix()
+        a = mmath.scaleMat4(*self.scale_l) * mmath.rotateMat4(-1, self.lookVerDeg_f, self.lookHorDeg_f, 0)  *\
+            mmath.translateMat4(*self.pos_l)
+        if self.parent is not None:
+            a *= self.parent.getModelMatrix()
+
+        return a
 
     def _applyGravity(self, timeDelta:float):
         distance = timeDelta * 10
