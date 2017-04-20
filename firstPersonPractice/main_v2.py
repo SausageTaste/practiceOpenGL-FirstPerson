@@ -1061,8 +1061,8 @@ class ShadowMap:
     def __init__(self):
         self.depthMapFbo = gl.glGenFramebuffers(1)
 
-        self.shadowW_i = 1024*16
-        self.shadowH_i = 1024*16
+        self.shadowW_i = 1024*4
+        self.shadowH_i = 1024*4
 
         self.program = self._getProgram()
 
