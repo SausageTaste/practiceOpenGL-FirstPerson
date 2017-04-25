@@ -1,3 +1,5 @@
+// Thanks to "https://learnopengl.com/"
+
 #version 430 core
 
 
