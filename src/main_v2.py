@@ -1249,6 +1249,7 @@ def main():
         traceback.print_exc()
         sleep(1)
         input("Press any key to continue...")
+        sys.exit(-1)
 
 
 if __name__ == '__main__':
