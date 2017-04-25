@@ -389,14 +389,18 @@ class LoadedModel(Actor):
             localObj_d = vertices_d[objName_s]  # Dictionary that contains vertex data atm. Local variable.
             attrObj_d = self.vertices_d[objName_s]  # Class attribute to store vertex data.
 
+            st2 = time()
             attrObj_d["vao"] = gl.glGenVertexArrays(1)
             gl.glBindVertexArray(attrObj_d["vao"])
+            print("\t\tGen vao:", time() - st2)
+
+            print("\tVertices")
 
             st2 = time()
             vertices = np.array(localObj_d["v_i"], dtype=np.float32)
             size = vertices.size * vertices.itemsize
             attrObj_d["ver_num"] = vertices.size // 3
-            print("\tCreat Numpy array:", time() - st2)
+            print("\t\tCreat Numpy array:", time() - st2)
 
             st2 = time()
             attrObj_d["v"] = gl.glGenBuffers(1)
@@ -405,34 +409,50 @@ class LoadedModel(Actor):
 
             gl.glVertexAttribPointer(0, 3, gl.GL_FLOAT, gl.GL_FALSE, 0, None)
             gl.glEnableVertexAttribArray(0)
-            print("\tCopy array buffer:", time() - st2)
+            print("\t\tCopy array buffer:", time() - st2)
 
             #### Texture Coord ####
 
+            print("\tTexture Coords")
+
+            st2 = time()
             textureCoords = np.array(localObj_d["vt_i"], dtype=np.float32)
             size = textureCoords.size * textureCoords.itemsize
+            print("\t\tCreat Numpy array:", time() - st2)
 
+            st2 = time()
             attrObj_d["vt"] = gl.glGenBuffers(1)
             gl.glBindBuffer(gl.GL_ARRAY_BUFFER, attrObj_d["vt"])
             gl.glBufferData(gl.GL_ARRAY_BUFFER, size, textureCoords, gl.GL_STATIC_DRAW)
 
             gl.glVertexAttribPointer(1, 2, gl.GL_FLOAT, gl.GL_FALSE, 0, None)
             gl.glEnableVertexAttribArray(1)
+            print("\t\tCopy array buffer:", time() - st2)
 
             #### Normal ####
 
+            print("\tNormals")
+
+            st2 = time()
             normalsArray = np.array(localObj_d["vn_i"], dtype=np.float32)
             size = normalsArray.size * normalsArray.itemsize
+            print("\t\tCreat Numpy array:", time() - st2)
 
+            st2 = time()
             attrObj_d["vn"] = gl.glGenBuffers(1)
             gl.glBindBuffer(gl.GL_ARRAY_BUFFER, attrObj_d["vn"])
             gl.glBufferData(gl.GL_ARRAY_BUFFER, size, normalsArray, gl.GL_STATIC_DRAW)
 
             gl.glVertexAttribPointer(2, 3, gl.GL_FLOAT, gl.GL_FALSE, 0, None)
             gl.glEnableVertexAttribArray(2)
+            print("\t\tCopy array buffer:", time() - st2)
 
+            st2 = time()
+            print("\ttexture:", time() - st2)
             attrObj_d["txid"] = mainpy.TextureContainer.getTexture(self.materials_d[localObj_d["mtl"]]["map_Kd"])
-            print("\tvao loaded:", time() - st)
+
+
+            print("\tObject loading finished:", time() - st)
 
     def _loadMaterial(self):
         with open(self.getMtlDir()) as file:

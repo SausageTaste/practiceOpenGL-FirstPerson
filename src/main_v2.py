@@ -188,6 +188,7 @@ class TextureContainer:
 
     @staticmethod
     def getTexture(textureDir_s:str):
+        st2 = time()
         aImg = Image.open(textureDir_s)
         imgW_i = aImg.size[0]
         imgH_i = aImg.size[1]
@@ -198,7 +199,9 @@ class TextureContainer:
             image_bytes = aImg.tobytes("raw", "RGBX", 0, -1)
             alpha_b = False
         imgArray = np.array([x / 255 for x in image_bytes], dtype=np.float32)
+        print("\t\tLoad textrue into np:", time() - st2)
 
+        st2 = time()
         texId = gl.glGenTextures(1)
         gl.glBindTexture(gl.GL_TEXTURE_2D, texId)
         gl.glTexStorage2D(gl.GL_TEXTURE_2D, 6, gl.GL_RGBA32F, imgW_i, imgH_i)
@@ -221,6 +224,7 @@ class TextureContainer:
             gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST_MIPMAP_NEAREST)
             gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
 
+        print("\t\trest:", time() - st2)
         return texId
 
 
