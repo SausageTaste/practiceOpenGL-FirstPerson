@@ -91,11 +91,6 @@ class Controller:
         if self.getStateChange(pl.K_F8) == 1:
             self.mainLoop.level.loadedModelManager.obj_l[0].load()
             self.mainLoop.worldLoaded_b = True
-        if self.getStateChange(pl.K_F9) == 1:
-            if self.mainLoop.lightSourceMode_b:
-                self.mainLoop.lightSourceMode_b = False
-            else:
-                self.mainLoop.lightSourceMode_b = True
         if self.getStateChange(pl.K_F10) == 1:
             self.mainLoop.level.boxManager.rotateSpeed_i -= 10
         if self.getStateChange(pl.K_F11) == 1:
@@ -323,15 +318,15 @@ class StaticSurface:
     def getProgram() -> int:
         with open("shader_source\\2nd_vs.glsl") as file:
             vertexShader = shaders.compileShader(file.read(), gl.GL_VERTEX_SHADER)
-        log_s = gl.glGetShaderInfoLog(vertexShader).decode()
-        if log_s:
-            raise TypeError(log_s)
+        log = gl.glGetShaderInfoLog(vertexShader)
+        if log:
+            raise TypeError(log)
 
         with open("shader_source\\2nd_fs.glsl") as file:
             fragmentShader = shaders.compileShader(file.read(), gl.GL_FRAGMENT_SHADER)
-        log_s = gl.glGetShaderInfoLog(fragmentShader).decode()
-        if log_s:
-            raise TypeError(log_s)
+        log = gl.glGetShaderInfoLog(fragmentShader)
+        if log:
+            raise TypeError(log)
 
         program = gl.glCreateProgram()
         gl.glAttachShader(program, vertexShader)
@@ -505,7 +500,7 @@ class Box(Actor):
 
     def drawForShadow(self, timeDelta):
         self.updateActor(timeDelta)
-        if self.renderFlag or True:
+        if True or self.renderFlag:
             gl.glBindVertexArray(self.vao)
             gl.glBindTexture(gl.GL_TEXTURE_2D, self.selectedTexId)
 
@@ -564,7 +559,7 @@ class BoxManager:
 
         # Fragment shader
 
-        gl.glUniform3f(8, *camera.getXYZ())
+        gl.glUniform3f(8, *camera.getWorldXYZ())
         gl.glUniform3f(9, *ambient_t)
 
         gl.glUniform1i(10, lightCount_i)
@@ -616,15 +611,15 @@ class BoxManager:
     def _getProgram() -> int:
         with open("shader_source\\2nd_vs_box.glsl") as file:
             vertexShader = shaders.compileShader(file.read(), gl.GL_VERTEX_SHADER)
-        log_s = gl.glGetShaderInfoLog(vertexShader).decode()
-        if log_s:
-            raise TypeError(log_s)
+        log = gl.glGetShaderInfoLog(vertexShader)
+        if log:
+            raise TypeError(log)
 
         with open("shader_source\\2nd_fs_box.glsl") as file:
             fragmentShader = shaders.compileShader(file.read(), gl.GL_FRAGMENT_SHADER)
-        log_s = gl.glGetShaderInfoLog(fragmentShader).decode()
-        if log_s:
-            raise TypeError(log_s)
+        log = gl.glGetShaderInfoLog(fragmentShader)
+        if log:
+            raise TypeError(log)
 
         program = gl.glCreateProgram()
         gl.glAttachShader(program, vertexShader)
@@ -669,40 +664,40 @@ class Level:
             mmath.Vec3(-size, 0, -size), mmath.Vec3(-size, 0, size), mmath.Vec3(size, 0, size), mmath.Vec3(size, 0, -size),
             mmath.Vec3(0, 1, 0),
             self.texCon[0x21],
-            2*size, 2*size, 32, 0.0
+            2*size, 2*size, 255, 0.2
         )
         self.wall1 = StaticSurface(
             mmath.Vec3(-size, 5, -size), mmath.Vec3(-size, 0, -size), mmath.Vec3(size, 0, -size), mmath.Vec3(size, 5, -size),
             mmath.Vec3(0, 0, 1),
             self.texCon[0x22],
-            5, 2*size, 8, 0.0
+            5, 2*size, 8, 0.2
         )
         self.wall2 = StaticSurface(
             mmath.Vec3(-size, 5, size), mmath.Vec3(-size, 0, size), mmath.Vec3(-size, 0, -size), mmath.Vec3(-size, 5, -size),
             mmath.Vec3(1, 0, 0),
             self.texCon[0x22],
-            5, 2*size, 8, 0.0
+            5, 2*size, 64, 0.2
         )
         self.wall3 = StaticSurface(
             mmath.Vec3(size, 5, size), mmath.Vec3(size, 0, size), mmath.Vec3(-size, 0, size), mmath.Vec3(-size, 5, size),
             mmath.Vec3(0, 0, -1),
             self.texCon[0x22],
-            5, 2*size, 8, 0.0
+            5, 2*size, 8, 0.2
         )
         self.wall4 = StaticSurface(
             mmath.Vec3(size, 5, -size), mmath.Vec3(size, 0, -size), mmath.Vec3(size, 0, size), mmath.Vec3(size, 5, size),
             mmath.Vec3(-1, 0, 0),
             self.texCon[0x13],
-            5, 2*size, 8, 0.0
+            5, 2*size, 64, 0.2
         )
         self.ceiling = StaticSurface(
             mmath.Vec3(-size, 5, size), mmath.Vec3(-size, 5, -size), mmath.Vec3(size, 5, -size), mmath.Vec3(size, 5, size),
-            mmath.Vec3(0, -1, 0), self.texCon[0x12], 2*size, 2*size, 0, 0
+            mmath.Vec3(0, -1, 0), self.texCon[0x12], 2*size, 2*size, 0, 0.0
         )
 
         self.display = StaticSurfaceShadow(
             mmath.Vec3(-2, 4, -5), mmath.Vec3(-2, 0, -5), mmath.Vec3(2, 0, -5), mmath.Vec3(2, 4, -5),
-            mmath.Vec3(0, 0, 1), depthMap, 1, 1, 0, 0
+            mmath.Vec3(0, 0, 1), depthMap, 1, 1, 0, 0.0
         )
 
         self.display2 = StaticSurfaceShadow(
@@ -715,14 +710,14 @@ class Level:
         box1 = Box(
             mmath.Vec3(-0.5, 1.6, -0.5), mmath.Vec3(-0.5, 1.6, 0.5), mmath.Vec3(0.5, 1.6, 0.5), mmath.Vec3(0.5, 1.6, -0.5),
             mmath.Vec3(-0.5, -1, -0.5), mmath.Vec3(-0.5, -1, 0.5), mmath.Vec3(0.5, -1, 0.5), mmath.Vec3(0.5, -1, -0.5),
-            self.texCon[0x12], 1, 1, 0, 0.0, [0,1.5,0]
+            self.texCon[0x12], 1, 1, 64, 0.2, [0,1.5,0]
         )
         self.boxManager.addBox(box1)
 
         self.boxManager.addBox(
             Box(mmath.Vec3(-1, 1, -1), mmath.Vec3(-1, 1, 1), mmath.Vec3(1, 1, 1), mmath.Vec3(1, 1, -1),
                 mmath.Vec3(-1, -1, -1), mmath.Vec3(-1, -1, 1), mmath.Vec3(1, -1, 1), mmath.Vec3(1, -1, -1),
-                self.texCon[0x12], 1, 1, 0, 0.0, [0,1,-17])
+                self.texCon[0x12], 1, 1, 64, 0.2, [0,1,-17])
         )
         self.boxManager.addBox(
             Box(mmath.Vec3(-1, 1, -1), mmath.Vec3(-1, 1, 1), mmath.Vec3(1, 1, 1), mmath.Vec3(1, 1, -1),
@@ -773,7 +768,7 @@ class Level:
         )
 
     def update(self, timeDelta, projectMatrix, viewMatrix, camera:Camera, flashLight, shadowMat, sunLightDirection):
-        a = sunLightDirection.dot(mmath.Vec4(0, -1, -1, 0)) - 0.5
+        a = sunLightDirection.dot(mmath.Vec4(0, -1, -1, 0)) + 0.5
         if a < 0.0:
             a = 0.0
         a = a*2
@@ -791,9 +786,14 @@ class Level:
 
         self.ambient_t = (0.25, 0.25, 0.25)
 
-        self.dynamicLight.r = sin( (time()+1)/2 )
-        self.dynamicLight.g = cos( (time()+1)/2 )
-        self.dynamicLight.b = sin( (time()+1)/2) * cos((time()+1)/2 )
+        #self.dynamicLight.r = sin( (time()+1)/2 )
+        #self.dynamicLight.g = cos( (time()+1)/2 )
+        #self.dynamicLight.b = sin( (time()+1)/2) * cos((time()+1)/2 )
+
+        self.dynamicLight.x = 39 # camera.getWorldXYZ()[0]
+        self.dynamicLight.y = 1 # camera.getWorldXYZ()[1]
+        self.dynamicLight.z = -39 # camera.getWorldXYZ()[2] + -20
+
 
         x, y, z = camera.getXYZ()
         y -= 0.5
@@ -852,7 +852,7 @@ class Level:
 
         # Fragment shader
 
-        gl.glUniform3f(8, *camera.getXYZ())
+        gl.glUniform3f(8, *camera.getWorldXYZ())
         gl.glUniform3f(9, *self.ambient_t)
 
         gl.glUniform1i(10, lightCount_i)
@@ -885,7 +885,7 @@ class Level:
 
         # Fragment shader
 
-        gl.glUniform3f(8, *camera.getXYZ())
+        gl.glUniform3f(8, *camera.parent.getXYZ())
         gl.glUniform3f(9, *self.ambient_t)
 
         gl.glUniform1i(10, lightCount_i)
@@ -1032,15 +1032,15 @@ class StaticSurfaceShadow:
     def getProgram() -> int:
         with open("shader_source\\vs_shadow_draw.glsl") as file:
             vertexShader = shaders.compileShader(file.read(), gl.GL_VERTEX_SHADER)
-        log_s = gl.glGetShaderInfoLog(vertexShader).decode()
-        if log_s:
-            raise TypeError(log_s)
+        log = gl.glGetShaderInfoLog(vertexShader)
+        if log:
+            raise TypeError(log)
 
         with open("shader_source\\fs_shadow_draw.glsl") as file:
             fragmentShader = shaders.compileShader(file.read(), gl.GL_FRAGMENT_SHADER)
-        log_s = gl.glGetShaderInfoLog(fragmentShader).decode()
-        if log_s:
-            raise TypeError(log_s)
+        log = gl.glGetShaderInfoLog(fragmentShader)
+        if log:
+            raise TypeError(log)
 
         program = gl.glCreateProgram()
         gl.glAttachShader(program, vertexShader)
@@ -1104,15 +1104,15 @@ class ShadowMap:
     def _getProgram() -> int:
         with open("shader_source\\vs_shadow.glsl") as file:
             vertexShader = shaders.compileShader(file.read(), gl.GL_VERTEX_SHADER)
-        log_s = gl.glGetShaderInfoLog(vertexShader).decode()
-        if log_s:
-            raise TypeError(log_s)
+        log = gl.glGetShaderInfoLog(vertexShader)
+        if log:
+            raise TypeError(log)
 
         with open("shader_source\\fs_shadow.glsl") as file:
             fragmentShader = shaders.compileShader(file.read(), gl.GL_FRAGMENT_SHADER)
-        log_s = gl.glGetShaderInfoLog(fragmentShader).decode()
-        if log_s:
-            raise TypeError(log_s)
+        log = gl.glGetShaderInfoLog(fragmentShader)
+        if log:
+            raise TypeError(log)
 
         program = gl.glCreateProgram()
         gl.glAttachShader(program, vertexShader)
@@ -1168,7 +1168,6 @@ class MainLoop:
         self.flashLight_b = True
 
         self.projectMatrix = None
-        self.lightSourceMode_b = False
 
         self.worldLoaded_b = False
 
@@ -1205,16 +1204,15 @@ class MainLoop:
         # viewMatrix = mmath.translateMat4(*self.camera.getWorldXYZ(), -1) * mmath.getlookatMat4( mmath.Vec4(*self.camera.getWorldXYZ(),1), mmath.Vec4(0,0,0,1), mmath.Vec4(0, 1, 0, 0) )
 
         if self.worldLoaded_b:
-            lightProjection = mmath.orthoMat4(-400.0, 400.0, -400.0, 400.0, -300.0, 300.0)
+            lightProjection = mmath.orthoMat4(-400.0, 400.0, -300.0, 300.0, -300.0, 300.0)
         else:
             lightProjection = mmath.orthoMat4(-75.0, 75.0, -75.0, 75.0, -75.0, 75.0)
 
-        if self.lightSourceMode_b:
-            lightView = mmath.getlookatMat4(mmath.Vec4(*self.camera.getWorldXYZ(), 1), mmath.Vec4(0, 0, 0, 1), mmath.Vec4(0, 1, 0, 0))
-        else:
-            sunLightDirection = mmath.Vec4(0, -1, -0.25, 0).normalize()
-            sunLightDirection = sunLightDirection.transform(mmath.rotateMat4(time()*10%360, 0, 0, -1))
-            lightView = mmath.getlookatMat4(mmath.Vec4(0, 0, 0, 1), mmath.Vec4(*sunLightDirection.getXYZ(), 0), mmath.Vec4(0, 1, 0, 0))
+        sunLightDirection = mmath.Vec4(0, 1, 0.5, 0).normalize()
+        sunLightDirection = sunLightDirection.transform(mmath.rotateMat4(time()*10%360, 0, 0, -1))
+
+        # lightView = mmath.translateMat4(0, 10, 0, -1) * mmath.rotateMat4(0, 0, 1, 0) * mmath.rotateMat4(-30, 1, 0, 0)
+        lightView = mmath.getlookatMat4(sunLightDirection, mmath.Vec4(0,0,0,0), mmath.Vec4(0, 1, 0, 0))
 
         self.shadowMap.renderDepthMap(lightProjection, lightView, self.level, self.fManager.getFrameDelta())
         self.onResize()

@@ -35,7 +35,7 @@ class LoadedModelManager:
 
         # Fragment shader
 
-        gl.glUniform3f(8, *camera.getXYZ())
+        gl.glUniform3f(8, *camera.getWorldXYZ())
         gl.glUniform3f(9, *ambient_t)
 
         gl.glUniform1i(10, lightCount_i)
@@ -383,6 +383,7 @@ class LoadedModel(Actor):
 
         self.vertices_d = {}
         for objName_s in vertices_d.keys():
+            print("Start", objName_s)
             st = time()
             self.vertices_d[objName_s] = {}
             localObj_d = vertices_d[objName_s]  # Dictionary that contains vertex data atm. Local variable.
@@ -391,16 +392,20 @@ class LoadedModel(Actor):
             attrObj_d["vao"] = gl.glGenVertexArrays(1)
             gl.glBindVertexArray(attrObj_d["vao"])
 
+            st2 = time()
             vertices = np.array(localObj_d["v_i"], dtype=np.float32)
             size = vertices.size * vertices.itemsize
             attrObj_d["ver_num"] = vertices.size // 3
+            print("\tCreat Numpy array:", time() - st2)
 
+            st2 = time()
             attrObj_d["v"] = gl.glGenBuffers(1)
             gl.glBindBuffer(gl.GL_ARRAY_BUFFER, attrObj_d["v"])
             gl.glBufferData(gl.GL_ARRAY_BUFFER, size, vertices, gl.GL_STATIC_DRAW)
 
             gl.glVertexAttribPointer(0, 3, gl.GL_FLOAT, gl.GL_FALSE, 0, None)
             gl.glEnableVertexAttribArray(0)
+            print("\tCopy array buffer:", time() - st2)
 
             #### Texture Coord ####
 
@@ -427,7 +432,7 @@ class LoadedModel(Actor):
             gl.glEnableVertexAttribArray(2)
 
             attrObj_d["txid"] = mainpy.TextureContainer.getTexture(self.materials_d[localObj_d["mtl"]]["map_Kd"])
-            print(objName_s, "vao loaded:", time() - st)
+            print("\tvao loaded:", time() - st)
 
     def _loadMaterial(self):
         with open(self.getMtlDir()) as file:

@@ -340,7 +340,7 @@ def getlookatMat4(eye:Vec4, center:Vec4, up:Vec4) -> np.ndarray:
         [ s.y,  u.y,  -f.y,  0.0 ],
         [ s.z,  u.z,  -f.z,  0.0 ],
         [ 0.0,  0.0,   0.0,  1.0 ]
-    ], np.float32)
+    ], np.float32).transpose()
 
 
 def main():
