@@ -447,10 +447,7 @@ class LoadedModel(Actor):
             gl.glEnableVertexAttribArray(2)
             print("\t\tCopy array buffer:", time() - st2)
 
-            st2 = time()
-            print("\ttexture:", time() - st2)
             attrObj_d["txid"] = mainpy.TextureContainer.getTexture(self.materials_d[localObj_d["mtl"]]["map_Kd"])
-
 
             print("\tObject loading finished:", time() - st)
 

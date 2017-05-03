@@ -188,6 +188,8 @@ class TextureContainer:
 
     @staticmethod
     def getTexture(textureDir_s:str):
+        print("\ttexture:", textureDir_s)
+
         st2 = time()
         aImg = Image.open(textureDir_s)
         imgW_i = aImg.size[0]
@@ -198,8 +200,9 @@ class TextureContainer:
         except ValueError:
             image_bytes = aImg.tobytes("raw", "RGBX", 0, -1)
             alpha_b = False
-        imgArray = np.array([x / 255 for x in image_bytes], dtype=np.float32)
+        imgArray = np.array([x / 255 for x in image_bytes], np.float32)
         print("\t\tLoad textrue into np:", time() - st2)
+        print("\t\tNdarray size:", imgArray.size*imgArray.itemsize/1024**2, "MB")
 
         st2 = time()
         texId = gl.glGenTextures(1)
@@ -225,6 +228,7 @@ class TextureContainer:
             gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
 
         print("\t\trest:", time() - st2)
+
         return texId
 
 
@@ -506,7 +510,6 @@ class Box(Actor):
         self.updateActor(timeDelta)
         if True or self.renderFlag:
             gl.glBindVertexArray(self.vao)
-            gl.glBindTexture(gl.GL_TEXTURE_2D, self.selectedTexId)
 
             #### To vertex shader ####
 
@@ -567,9 +570,13 @@ class BoxManager:
         gl.glUniform3f(9, *ambient_t)
 
         gl.glUniform1i(10, lightCount_i)
-        gl.glUniform3fv(12, lightCount_i, lightPos_t)
-        gl.glUniform3fv(17, lightCount_i, lightColor_t)
-        gl.glUniform1fv(22, lightCount_i, lightMaxDistance_t)
+        gl.glUniform3fv(12, lightCount_i, lightPos_t[:3])
+        gl.glUniform3fv(17, lightCount_i, lightColor_t[:3])
+        gl.glUniform1fv(22, lightCount_i, lightMaxDistance_t[:1])
+
+        gl.glUniform3fv(13, lightCount_i - 1, lightPos_t[3:])
+        gl.glUniform3fv(16, lightCount_i - 1, lightColor_t[3:])
+        gl.glUniform1fv(23, lightCount_i - 1, lightMaxDistance_t[1:])
 
         gl.glUniformMatrix4fv(gl.glGetUniformLocation(self.program, "lightSpaceMatrix"), 1, gl.GL_FALSE, shadowMat)
 
@@ -1198,11 +1205,7 @@ class MainLoop:
 
         self.controller.update(self.fManager.getFrameDelta())
 
-        if False:
-            self.drawText((-0.95, 0.9, 0), "FPS : {}".format(self.fManager.getFPS()[0]))
-            self.drawText((-0.95, 0.8, 0), "Pos : {:.2f}, {:.2f}, {:.2f}".format(*self.camera.pos_l))
-            self.drawText((-0.95, 0.7, 0), "Looking : {:.2f}, {:.2f}".format(self.camera.lookHorDeg_f,
-                                                                             self.camera.lookVerDeg_f))
+
         hor, ver = self.camera.getWorldDegree()
         viewMatrix = mmath.translateMat4(*self.camera.getWorldXYZ(), -1) * mmath.rotateMat4(hor, 0, 1, 0) * mmath.rotateMat4(ver, 1, 0, 0)
         # viewMatrix = mmath.translateMat4(*self.camera.getWorldXYZ(), -1) * mmath.getlookatMat4( mmath.Vec4(*self.camera.getWorldXYZ(),1), mmath.Vec4(0,0,0,1), mmath.Vec4(0, 1, 0, 0) )
@@ -1220,7 +1223,12 @@ class MainLoop:
 
         self.shadowMap.renderDepthMap(lightProjection, lightView, self.level, self.fManager.getFrameDelta())
         self.onResize()
-        self.level.update(self.fManager.getFrameDelta(), self.projectMatrix, viewMatrix, self.camera, self.flashLight_b, lightView*lightProjection, sunLightDirection)
+        self.level.update(self.fManager.getFrameDelta(), self.projectMatrix, viewMatrix, self.camera, self.flashLight_b, lightView * lightProjection, sunLightDirection)
+
+        if True:
+            self.drawText((-0.95, 0.9, 0), "FPS : {}".format(self.fManager.getFPS()[0]))
+            self.drawText((-0.95, 0.8, 0), "Pos : {:.2f}, {:.2f}, {:.2f}".format(*self.camera.pos_l))
+            self.drawText((-0.95, 0.7, 0), "Looking : {:.2f}, {:.2f}".format(self.camera.lookHorDeg_f, self.camera.lookVerDeg_f))
 
         p.display.flip()
 
