@@ -8,6 +8,7 @@ import numpy as np
 import main_v2 as mainpy
 from actor import Actor
 from camera import Camera
+import glfunc as glf
 
 
 class LoadedModelManager:
@@ -82,13 +83,13 @@ class LoadedModelManager:
     def _getProgram() -> int:
         with open("shader_source\\2nd_vs_loaded.glsl") as file:
             vertexShader = shaders.compileShader(file.read(), gl.GL_VERTEX_SHADER)
-        log_s = gl.glGetShaderInfoLog(vertexShader).decode()
+        log_s = glf.get_shader_log(vertexShader)
         if log_s:
             raise TypeError(log_s)
 
         with open("shader_source\\2nd_fs_loaded.glsl") as file:
             fragmentShader = shaders.compileShader(file.read(), gl.GL_FRAGMENT_SHADER)
-        log_s = gl.glGetShaderInfoLog(fragmentShader).decode()
+        log_s = glf.get_shader_log(fragmentShader)
         if log_s:
             raise TypeError(log_s)
 

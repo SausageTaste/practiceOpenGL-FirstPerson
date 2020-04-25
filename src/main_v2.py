@@ -18,6 +18,7 @@ import obj_load as ol
 import collide as co
 from actor import Actor
 from camera import Camera
+import glfunc as glf
 
 
 class Controller:
@@ -326,13 +327,13 @@ class StaticSurface:
     def getProgram() -> int:
         with open("shader_source\\2nd_vs.glsl") as file:
             vertexShader = shaders.compileShader(file.read(), gl.GL_VERTEX_SHADER)
-        log = gl.glGetShaderInfoLog(vertexShader)
+        log = glf.get_shader_log(vertexShader)
         if log:
             raise TypeError(log)
 
         with open("shader_source\\2nd_fs.glsl") as file:
             fragmentShader = shaders.compileShader(file.read(), gl.GL_FRAGMENT_SHADER)
-        log = gl.glGetShaderInfoLog(fragmentShader)
+        log = glf.get_shader_log(fragmentShader)
         if log:
             raise TypeError(log)
 
@@ -622,13 +623,13 @@ class BoxManager:
     def _getProgram() -> int:
         with open("shader_source\\2nd_vs_box.glsl") as file:
             vertexShader = shaders.compileShader(file.read(), gl.GL_VERTEX_SHADER)
-        log = gl.glGetShaderInfoLog(vertexShader)
+        log = glf.get_shader_log(vertexShader)
         if log:
             raise TypeError(log)
 
         with open("shader_source\\2nd_fs_box.glsl") as file:
             fragmentShader = shaders.compileShader(file.read(), gl.GL_FRAGMENT_SHADER)
-        log = gl.glGetShaderInfoLog(fragmentShader)
+        log = glf.get_shader_log(fragmentShader)
         if log:
             raise TypeError(log)
 
@@ -1043,13 +1044,13 @@ class StaticSurfaceShadow:
     def getProgram() -> int:
         with open("shader_source\\vs_shadow_draw.glsl") as file:
             vertexShader = shaders.compileShader(file.read(), gl.GL_VERTEX_SHADER)
-        log = gl.glGetShaderInfoLog(vertexShader)
+        log = glf.get_shader_log(vertexShader)
         if log:
             raise TypeError(log)
 
         with open("shader_source\\fs_shadow_draw.glsl") as file:
             fragmentShader = shaders.compileShader(file.read(), gl.GL_FRAGMENT_SHADER)
-        log = gl.glGetShaderInfoLog(fragmentShader)
+        log = glf.get_shader_log(fragmentShader)
         if log:
             raise TypeError(log)
 
@@ -1115,13 +1116,13 @@ class ShadowMap:
     def _getProgram() -> int:
         with open("shader_source\\vs_shadow.glsl") as file:
             vertexShader = shaders.compileShader(file.read(), gl.GL_VERTEX_SHADER)
-        log = gl.glGetShaderInfoLog(vertexShader)
+        log = glf.get_shader_log(vertexShader)
         if log:
             raise TypeError(log)
 
         with open("shader_source\\fs_shadow.glsl") as file:
             fragmentShader = shaders.compileShader(file.read(), gl.GL_FRAGMENT_SHADER)
-        log = gl.glGetShaderInfoLog(fragmentShader)
+        log = glf.get_shader_log(fragmentShader)
         if log:
             raise TypeError(log)
 
