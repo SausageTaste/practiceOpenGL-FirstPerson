@@ -1,48 +1,51 @@
+[한국어](./README_kr.md)
+
+
 # practice-FirstPersonOpenGL
 
-
-## ● 개요
 ![Overview](/screenshots/01.png)
-　제가 혼자서 OpenGL을 공부하며 만든 간단한 3D FPS 렌더링 프로그램입니다.
-이 프로그램에서 할 수 있는 거라곤 단순히 WASD키로 돌아다니기, 마우스로 시점 조작하기, 상자에 부딪치기 정도 뿐입니다.
-하지만 렌더링과 관련해서는, OpenGL과 쉐이딩 언어 GLSL을 이용하여 조명, 그림자, Blender에서 exported된 모델 불러오기 등 괜찮은 기능들이 구현돼 있습니다.
 
-## ● 코드를 읽어보시려는 분께
-　소스 파일들은 src 폴더에 있습니다. src.zip 파일만 받으셔도 됩니다.
+Simple Python-OpenGL project to study how to use it.
+There are nothing fancy things to do here, just walking/flying around, looking around, colliding to aabb boxes.
 
-　제 첫 3D 렌더링 프로그램이기도 하고, 새로 배운 대로 그때그때 추가하느라 코드가 깔끔하지 않고 알아보기도 힘들어졌습니다.
-게다가 주석도 거의 안 달려 있습니다 죄송합니다. ㅜㅜ
-혹시나 제 코드의 일부분이 이해가 잘 되지 않는다면 제 이메일로(woos8899@gmail.com) 질문 보내주세요.
-하나도 이해가 안 되신다면...
-혹시나 OpenGL 공부에 관심이 있으시다면 [제가 OpenGL을 배운 웹사이트](https://learnopengl.com/) 를 방문해 보시길 추천해 드립니다.
-물론 영어입니다.
+There are 3 kinds of basics light sources (point, spot, directional) and for directional light it can cast shadow.
+On the center of the room, you can see the shadow map used by the directional light.
 
-## ● 코드를 실행하시려는 분께
-　src 폴더 안의 내용물들이 Github에 있는 그대로 모두 필요합니다.
-py 파일들을 모두 다운로드 하시고, assets 폴더와 shader_source 폴더의 내용물도 모두 다운로드 하셔야 합니다.
+It can import 3D models in OBJ format. Press F8 key to load huge city map.
+Since I didn't implemented multithreading, the app freezes while loading.
+Z-fighting isn't addressed correctly so the blue plane might look bad.
+Also, loading the huge model makes shadow-casting area larger, which makes shadow look more blocky.
 
-## ● 제작환경
+
+# How to run the program
+
+Clone the repository and run `{git_repo}/src/main_v2.py`.
+Current directory must be `{git_repo}/src` or it fails to load shader source files.
+
+
+# Dev Environment
 
 * Python 3.5
 * Windows 10 (x64)
 
-#### 필요 라이브러리
+#### Needed Libraries
+
 * Numpy
 * PyGame
 * PyOpenGL
 * Pillow
 
-## ● 조작법
 
-* WASD : 이동
-* ↑←↓→ : 시점 조작
-* SPACE : 비행 모드 켜진 경우 수직 상승
-* SHIFT : 비행 모드 켜진 경우 수직 하강
-* F : 손전등 켜기/끄기
-* F6 : '마우스로 시점' 조작 켜기/끄기 (기본값 꺼짐)
-* F7 : '비행 모드' 켜기/끄기 (기본값 꺼짐)
-* F8 : 배경 모델 불러오기 (몇 초 간 프로그램이 멈춤)
-* F9 : < 삭제된 기능 > (누르면 프로그램 튕김)
-* F10 : 상자들 회전 속도 10 줄이기 (기본값 20)
-* F11 : 상자들 회전 속도 10 늘이기
-* ESC : 프로그램 종료
+# Control
+
+* WASD : Horizontal movement
+* ↑←↓→ : Look around
+* SPACE : Vertical ascent (on noclip mode)
+* SHIFT : Vertical Descent (on noclip mode)
+* F : Toggle flashlight
+* F6 : Toggle look around with mouse (default is off)
+* F7 : Toggle noclip (default is off)
+* F8 : Load city map model (it freezes the app for a few seconds)
+* F10 : Increase orbit speed of boxes by 10 (default is 20)
+* F11 : Decrease orbit speed of boxes by 10
+* ESC : Exit app
