@@ -22,6 +22,9 @@ from lights import PointLight, SpotLight
 import glfunc as glf
 
 
+BLOCKY_TEXTURE = False
+
+
 class Controller:
     def __init__(self, mainLoop:"MainLoop", target:"Actor"):
         self.oldState_t = p.key.get_pressed()
@@ -183,7 +186,7 @@ class TextureContainer:
 
         gl.glGenerateMipmap(gl.GL_TEXTURE_2D)
 
-        if 1:
+        if not BLOCKY_TEXTURE:
             gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR_MIPMAP_LINEAR)
             gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
         else:
