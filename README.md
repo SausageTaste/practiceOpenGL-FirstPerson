@@ -19,8 +19,8 @@ Also, loading the huge model makes shadow-casting area larger, which makes shado
 
 # How to run the program
 
-Clone the repository and run `{git_repo}/src/main_v2.py`.
-Current directory must be `{git_repo}/src` or it fails to load shader source files.
+Clone the repository and run `{git_repo}/main_v2.py`.
+Current working directory must be `{git_repo}` or it fails to load shader source files.
 
 
 # Dev Environment
