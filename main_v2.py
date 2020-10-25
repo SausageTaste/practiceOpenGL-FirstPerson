@@ -1031,97 +1031,6 @@ class StaticSurfaceShadow:
         return program
 
 
-class ShadowMap:
-    def __init__(self):
-        self.depthMapFbo = gl.glGenFramebuffers(1)
-
-        self.shadowW_i = 1024*4
-        self.shadowH_i = 1024*4
-
-        self.program = self._getProgram()
-
-        self.depthMapTex = gl.glGenTextures(1)
-        gl.glBindTexture(gl.GL_TEXTURE_2D, self.depthMapTex)
-        gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_DEPTH_COMPONENT, self.shadowW_i, self.shadowH_i, 0, gl.GL_DEPTH_COMPONENT, gl.GL_FLOAT, None)
-
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST)
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_BORDER)
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_BORDER)
-        #gl.glTexParameterfv(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_BORDER_COLOR, (1.0, 1.0, 1.0, 1.0))
-
-        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, self.depthMapFbo)
-        gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_DEPTH_ATTACHMENT, gl.GL_TEXTURE_2D, self.depthMapTex, 0)
-        gl.glDrawBuffer(gl.GL_NONE)
-        gl.glReadBuffer(gl.GL_NONE)
-
-        if gl.glCheckFramebufferStatus(gl.GL_FRAMEBUFFER) != gl.GL_FRAMEBUFFER_COMPLETE:
-            print( "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" )
-        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
-
-    def renderDepthMap(self, lightProjection, lightView, level:Level, timeDelta):
-        gl.glDisable(gl.GL_CULL_FACE)
-        gl.glUseProgram(self.program)
-        gl.glViewport(0, 0, self.shadowW_i, self.shadowH_i)
-        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, self.depthMapFbo)
-        gl.glClear(gl.GL_DEPTH_BUFFER_BIT)
-
-        gl.glUniformMatrix4fv( 1, 1, gl.GL_FALSE, lightView * lightProjection )
-
-        level.drawForShadow(timeDelta)
-
-        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
-        gl.glEnable(gl.GL_CULL_FACE)
-        gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
-
-    @staticmethod
-    def _getProgram() -> int:
-        with open("shader_source\\vs_shadow.glsl") as file:
-            vertexShader = shaders.compileShader(file.read(), gl.GL_VERTEX_SHADER)
-        log = glf.get_shader_log(vertexShader)
-        if log:
-            raise TypeError(log)
-
-        with open("shader_source\\fs_shadow.glsl") as file:
-            fragmentShader = shaders.compileShader(file.read(), gl.GL_FRAGMENT_SHADER)
-        log = glf.get_shader_log(fragmentShader)
-        if log:
-            raise TypeError(log)
-
-        program = gl.glCreateProgram()
-        gl.glAttachShader(program, vertexShader)
-        gl.glAttachShader(program, fragmentShader)
-        gl.glLinkProgram(program)
-
-        print("Linking Log in Shadow:", gl.glGetProgramiv(program, gl.GL_LINK_STATUS))
-
-        gl.glDeleteShader(vertexShader)
-        gl.glDeleteShader(fragmentShader)
-
-        gl.glUseProgram(program)
-
-        return program
-
-
-class FrameBuffer:
-    def __init__(self):
-        self.fbo = gl.glGenFramebuffers(1)
-        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, self.fbo)
-
-        texture = gl.glGenTextures(1)
-        gl.glBindTexture(gl.GL_TEXTURE_2D, texture)
-
-        gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, 800, 600, 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE, None)
-
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR);
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR);
-
-        gl.glFramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT0, gl.GL_TEXTURE_2D, texture, 0)
-
-        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
-        gl.glDeleteFramebuffers(1, self.fbo)
-
-
 class MainLoop:
     def __init__(self):
         p.init()
@@ -1133,8 +1042,8 @@ class MainLoop:
 
         self.initGL()
 
-        self.shadowMap = ShadowMap()
-        self.level = Level(self, self.shadowMap.depthMapTex)
+        self.shadowMap = glf.ShadowMap()
+        self.level = Level(self, self.shadowMap.getTex())
         self.camera = Camera()
         self.controller = Controller(self, self.camera)
         self.fManager = mp.FrameManager(True)
@@ -1168,7 +1077,6 @@ class MainLoop:
 
         self.controller.update(self.fManager.getFrameDelta())
 
-
         hor, ver = self.camera.getWorldDegree()
         viewMatrix = mmath.translateMat4(*self.camera.getWorldXYZ(), -1) * mmath.rotateMat4(hor, 0, 1, 0) * mmath.rotateMat4(ver, 1, 0, 0)
         # viewMatrix = mmath.translateMat4(*self.camera.getWorldXYZ(), -1) * mmath.getlookatMat4( mmath.Vec4(*self.camera.getWorldXYZ(),1), mmath.Vec4(0,0,0,1), mmath.Vec4(0, 1, 0, 0) )
@@ -1184,7 +1092,10 @@ class MainLoop:
         # lightView = mmath.translateMat4(0, 10, 0, -1) * mmath.rotateMat4(0, 0, 1, 0) * mmath.rotateMat4(-30, 1, 0, 0)
         lightView = mmath.getlookatMat4(sunLightDirection, mmath.Vec4(0,0,0,0), mmath.Vec4(0, 1, 0, 0))
 
-        self.shadowMap.renderDepthMap(lightProjection, lightView, self.level, self.fManager.getFrameDelta())
+        self.shadowMap.startRenderOn(lightProjection, lightView)
+        self.level.drawForShadow(self.fManager.getFrameDelta())
+        self.shadowMap.finishRenderOn()
+
         self.onResize()
         self.level.update(self.fManager.getFrameDelta(), self.projectMatrix, viewMatrix, self.camera, self.flashLight_b, lightView * lightProjection, sunLightDirection)
 
