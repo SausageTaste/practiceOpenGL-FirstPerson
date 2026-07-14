@@ -5,7 +5,7 @@ import OpenGL.GL as gl
 from OpenGL.GL import shaders
 import numpy as np
 
-import main_v2 as mainpy
+import main as mainpy
 from actor import Actor
 from camera import Camera
 import glfunc as glf
@@ -111,11 +111,11 @@ class LoadedModelManager:
 class LoadedModel(Actor):
     """
     This class is child class of Actor.
-    
+
     This class's instance gets a location of obj file, loads models.
     Also it load mtl file that has same name as obj file.
     A pair of files has vertices, texture coor, vertex normal, texture file location.
-    
+
     Draw loaded models every time self.update() is called.
     self.update() is called in LoadedModelManager.update().
     """

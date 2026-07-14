@@ -2,7 +2,7 @@ import math
 from typing import Tuple, Union, Optional
 
 import mymath as mmath
-import main_v2 as mainpy
+import main as mainpy
 from actor import Actor
 
 
@@ -16,13 +16,13 @@ def hitCheckPlaneSegment(pln:"Plane", seg:"Segment", printResult_b:bool=False) -
     [0] : Result code, described below.
     [1] : Meet coord.
     [2] : Vector's length - (from start point to meet point vector)'s length.
-    
+
     -1 : Vector is too short to reach the plane.
     -2 : Plane and vector are parallel and never gonna meet.
     0 : Vector is heading opposite side from plane.
     -4 : Length is long enough to reach plane but heading wrong way.
     1 : They meat.
-    
+
     """
     dotCheck = ( pln.a*seg.posVec4.x + pln.b*seg.posVec4.y + pln.c*seg.posVec4.z )
     if dotCheck >= 0.0:
